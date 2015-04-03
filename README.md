@@ -2,6 +2,7 @@
 Project files for the E4E Tango Projects
 
 Before compiling, you should download and compile these libraries:
+
 1.  Android NDK [r10d](http://dl.google.com/android/ndk/android-ndk-r10d-linux-x86_64.bin)
 2.  Boost for Android (> 1.53)
 3.  PCL for Android (1.6.0)
