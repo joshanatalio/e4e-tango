@@ -2,12 +2,12 @@
 Project files for the E4E Tango Projects
 
 Before compiling, you should download and compile these libraries:
-1. Android NDK [r10d](http://dl.google.com/android/ndk/android-ndk-r10d-linux-x86_64.bin)
-2. Boost for Android (> 1.53)
-3. PCL for Android (1.6.0)
-4. EIGEN for Android (???)
-5. [OpenCV for Android](http://sourceforge.net/projects/opencvlibrary/files/opencv-android/2.4.10/)
-6. Tegra Android Development Pack (Optional)
+1.  Android NDK [r10d](http://dl.google.com/android/ndk/android-ndk-r10d-linux-x86_64.bin)
+2.  Boost for Android (> 1.53)
+3.  PCL for Android (1.6.0)
+4.  EIGEN for Android (???)
+5.  [OpenCV for Android](http://sourceforge.net/projects/opencvlibrary/files/opencv-android/2.4.10/)
+6.  Tegra Android Development Pack (Optional)
 
 I installed PCL, boost, and Eigen using the "Superbuild" instructions on
 [this](http://www.vtk.org/Wiki/VES/Point_Cloud_Library) page which is from
@@ -22,7 +22,7 @@ You will also need to set the environment variables:
 * **ANDROID_NDK_ROOT** (and NDK_ROOT to be safe)
 * **ANDROID_SDK_ROOT** (and SDK_ROOT to be safe)
 * **TANGO_ROOT**
-* **OPENCV_ROOT **
+* **OPENCV_ROOT**
 * **PCL_ROOT** (Comes with the pcl-superbuild above)
 * **BOOST_ROOT** (Comes with the pcl-superbuild above)
 * **EIGEN_ROOT** (Comes with the pcl-superbuild above)
