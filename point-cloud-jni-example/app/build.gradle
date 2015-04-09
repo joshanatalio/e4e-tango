@@ -39,5 +39,4 @@ task ndkBuild(type: Exec) {
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile project(':openCVLibrary2411')
 }

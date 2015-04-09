@@ -14,14 +14,10 @@
 * limitations under the License.
 */
 
+
+
 #include "tango_data.h"
 static float prev_depth_timestamp = 0.0f;
-void test_call(){
-  Mat ft = Mat::zeros(10,10,CV_32FC1);
-  Mat h = Mat::zeros(10,10,CV_32FC1);
-  Mat multiply1 = h*ft;
-  LOGI("Matrix Multiply Successful");
-}
 
 // Get status string based on the pose status code.
 static const char* getStatusStringFromStatusCode(TangoPoseStatusType status) {
@@ -45,23 +41,6 @@ static const char* getStatusStringFromStatusCode(TangoPoseStatusType status) {
   return status_string;
 }
 
-std::string concat_path_and_name(std::string path, std::string name){
-    return path+name;
-}
-
-int write_cvmat_to_jpeg(string path, string img_name, Mat image){
-    std::string absolute_path = concat_path_and_name(path,img_name);
-    imwrite(absolute_path.c_str(), image);
-    //TODO: Error Code
-}
-
-int write_buffer_to_jpeg(string path, string img_name, const TangoImageBuffer * image){
-    Mat imageRGBA(image->height, image->width, CV_8UC4, image->data); // TODO: Convert format from RGBA_8888 to BGRA_8888
-    write_cvmat_to_jpeg(path,img_name,imageRGBA);
-    imageRGBA.release();
-    //TODO: Error Code
-}
-
 static void onFrameAvailable(void* context, TangoCameraId id, const TangoImageBuffer* buffer) {
   // Copy TangoImageBuffer
   if(!buffer){
@@ -71,6 +50,7 @@ static void onFrameAvailable(void* context, TangoCameraId id, const TangoImageBu
     return;
   }
   LOGI("onFrameAvailable called");
+  // Allocate the image buffer that we're going to push on the queue
   TangoImageBuffer * next_enqueue = new TangoImageBuffer();
   next_enqueue->width = buffer->width;
   next_enqueue->height = buffer->height;
@@ -81,15 +61,27 @@ static void onFrameAvailable(void* context, TangoCameraId id, const TangoImageBu
   next_enqueue->data = new uint8_t[buffer->width * buffer->height * 4];
   memcpy(next_enqueue->data, buffer->data,
 	  buffer->width * buffer->height * 4*sizeof(*(buffer->data)));
-  // Lock Mutex
-  pthread_mutex_lock(&TangoData::GetInstance().frame_mutex);
-  // Enqueue (TODO)
-  // TangoData::GetInstance().frame_queue.push(next_enqueue);
-  pthread_cond_signal(&TangoData::GetInstance().frame_cv);
-  // Signal condition variable
-  pthread_mutex_unlock(&TangoData::GetInstance().frame_mutex);
-  delete next_enqueue->data;
-  delete next_enqueue;
+  if(id == TANGO_CAMERA_FISHEYE){
+    // Lock Mutex
+    pthread_mutex_lock(&TangoData::GetInstance().fisheye_mutex);
+    delete next_enqueue;
+    // Enqueue
+    // TangoData::GetInstance().fisheye_queue.push(next_enqueue);
+    pthread_cond_signal(&TangoData::GetInstance().fisheye_cv);
+    // Signal condition variable
+    pthread_mutex_unlock(&TangoData::GetInstance().fisheye_mutex);
+  } else if (TANGO_CAMERA_COLOR){
+    // Lock Mutex
+    pthread_mutex_lock(&TangoData::GetInstance().frame_mutex);
+    delete next_enqueue;
+    // Enqueue
+    // TangoData::GetInstance().frame_queue.push(next_enqueue);
+    pthread_cond_signal(&TangoData::GetInstance().frame_cv);
+    // Signal condition variable
+    pthread_mutex_unlock(&TangoData::GetInstance().frame_mutex);
+  }
+
+
 }
 
 /// Callback function when new XYZij data available, caller is responsible
@@ -113,7 +105,6 @@ static void onXYZijAvailable(void*, const TangoXYZij* XYZ_ij) {
   // Enqueue (TODO)
   TangoData::GetInstance().xyzij_queue.push(next_enqueue);
   pthread_cond_signal(&TangoData::GetInstance().xyzij_cv);
-
 
   // Copying out the depth buffer.
   // Note: the XYZ_ij object will be out of scope after this callback is
@@ -180,12 +171,11 @@ static void onPoseAvailable(void*, const TangoPoseData* pose) {
   pthread_mutex_unlock(&TangoData::GetInstance().pose_mutex);
 }
 
-
 void * record_pose(void*){
   TangoPoseData * current_pose;
   pthread_mutex_lock(&TangoData::GetInstance().pose_mutex);
   pthread_cond_wait(&TangoData::GetInstance().pose_cv, &TangoData::GetInstance().pose_mutex);
-  string file_path = concat_path_and_name(*TangoData::GetInstance().pose_external_path, string("/pose.csv"));
+  string file_path = *TangoData::GetInstance().pose_external_path + string("/pose.csv");
   std::ofstream fp;
   fp.open(file_path.c_str());
   LOGI("Record Pose Started. File: %s",file_path.c_str());
@@ -218,6 +208,18 @@ void * record_frame(void*){
   pthread_mutex_unlock(&TangoData::GetInstance().frame_mutex);
 }
 
+void * record_fisheye(void*){
+  pthread_mutex_lock(&TangoData::GetInstance().fisheye_mutex);
+  pthread_cond_wait(&TangoData::GetInstance().fisheye_cv, &TangoData::GetInstance().fisheye_mutex);
+  // TODO: Wait for first signal to open file
+  LOGI("Record fisheye Started");
+  while(!TangoData::GetInstance().fisheye_terminate){
+    while(!TangoData::GetInstance().fisheye_queue.size())
+        pthread_cond_wait(&TangoData::GetInstance().fisheye_cv, &TangoData::GetInstance().fisheye_mutex);
+  }
+  pthread_mutex_unlock(&TangoData::GetInstance().fisheye_mutex);
+}
+
 std::string to_str(double timestamp){
   std::ostringstream stm ;
   stm << timestamp ;
@@ -247,10 +249,37 @@ void write_ply_file(std::string path, TangoXYZij * xyzij){
   }
   pcl::io::savePLYFileBinary(path + string("/xyzij_") + to_str(xyzij->timestamp) + string(".ply"),xyz);
 }
+
+//TODO: How do we use the scan name? Can we change the camera focus?
+void write_calibration(string path, string scan_name,
+    TangoCameraIntrinsics calibration){
+  string file_name =  path + string("/")+ scan_name + string(".calib");
+  std::ofstream fp;
+  fp.open(file_name.c_str());
+  fp << "Camera id: " << calibration.camera_id << '\n';
+  fp << "Calibration Type: " << calibration.calibration_type << '\n';
+  fp << "Width (px): " << calibration.width << '\n';
+  fp << "Height (px): " << calibration.height << '\n';
+  fp << "Focal Length X: " << calibration.fx << '\n';
+  fp << "Focal Length Y: " << calibration.fy << '\n';
+  fp << "Prinicpal X (px): " << calibration.cx << '\n';
+  fp << "Principal Y (px): " << calibration.cy << '\n';
+  fp << "Distortion[0]: " << calibration.distortion[0] << '\n';
+  fp << "Distortion[1]: " << calibration.distortion[1] << '\n';
+  fp << "Distortion[2]: " << calibration.distortion[2] << '\n';
+  fp << "Distortion[3]: " << calibration.distortion[3] << '\n';
+  fp << "Distortion[4]: " << calibration.distortion[4] << '\n';
+  fp.close();
+}
+
 void * record_xyzij(void*){
   TangoXYZij * current_xyzij;
   pthread_mutex_lock(&TangoData::GetInstance().xyzij_mutex);
   pthread_cond_wait(&TangoData::GetInstance().xyzij_cv, &TangoData::GetInstance().xyzij_mutex);
+  // Write Camera Calibration Parameters
+  string file_path = *TangoData::GetInstance().pose_external_path + string("/calibration.csv");
+  std::ofstream fp;
+  fp.open(file_path.c_str());
   while(!TangoData::GetInstance().xyzij_terminate){
     while(!TangoData::GetInstance().xyzij_queue.size()){
         pthread_cond_wait(&TangoData::GetInstance().xyzij_cv, &TangoData::GetInstance().xyzij_mutex);
@@ -264,7 +293,6 @@ void * record_xyzij(void*){
     delete[] current_xyzij->xyz;
     delete[] current_xyzij->ij;
     delete[] current_xyzij;
-    pcl::PointXYZ foo;
   }
   pthread_mutex_unlock(&TangoData::GetInstance().xyzij_mutex);
 }
@@ -287,7 +315,7 @@ TangoData::TangoData() : config_(nullptr) {
   pthread_create(&pose_thread, nullptr, record_pose, nullptr);
   pthread_create(&xyzij_thread, nullptr, record_xyzij, nullptr);
   //pthread_create(&frame_thread, nullptr, record_frame, nullptr);
-
+  pthread_create(&fisheye_thread, nullptr, record_fisheye, nullptr);
   d_2_ss_mat_motion = glm::mat4(1.0f);
   d_2_ss_mat_depth = glm::mat4(1.0f);
   d_2_imu_mat = glm::mat4(1.0f);
@@ -352,10 +380,11 @@ bool TangoData::setExternalStorageDirectory(string id, string path) {
   if(id == string("TANGO_CAMERA_COLOR")){
     frame_external_path = ext_path;
   } else if(id == string("TANGO_CAMERA_FISHEYE")){
+    fisheye_external_path = ext_path;
   } else if(id == string("TANGO_CAMERA_DEPTH")){
-      xyzij_external_path = ext_path;
+    xyzij_external_path = ext_path;
   } else if(id == string("TANGO_POSE")){
-      pose_external_path = ext_path;
+    pose_external_path = ext_path;
   } else {
     LOGI("Unknown ID: %s", id.c_str());
   }
@@ -364,23 +393,33 @@ bool TangoData::setExternalStorageDirectory(string id, string path) {
 
 bool TangoData::ConnectCallbacks() {
   // Attach the onXYZijAvailable callback.
-
+  int count = -1;
+  cudaGetDeviceCount(&count);
+  LOGI("Found %d cuda Devices",count); // TODO: Check driver?
   if (TangoService_connectOnXYZijAvailable(onXYZijAvailable) != TANGO_SUCCESS) {
     LOGI("TangoService_connectOnXYZijAvailable(): Failed");
     return false;
   }
 
   // Attach the frameAvailable callback.
-  if ((TangoService_connectOnFrameAvailable(TANGO_CAMERA_COLOR, (void*) frame_external_path, onFrameAvailable)) != TANGO_SUCCESS) { // TODO: Use Camera ID to differentiate
+  if ((TangoService_connectOnFrameAvailable(TANGO_CAMERA_COLOR,
+    (void*) frame_external_path, onFrameAvailable)) != TANGO_SUCCESS) {
     LOGI("TangoService_connectOnFrameAvailable(): Failed");
     return false;
   }
+    // Attach the frameAvailable callback.
+    if ((TangoService_connectOnFrameAvailable(TANGO_CAMERA_FISHEYE,
+      (void*) frame_external_path, onFrameAvailable)) != TANGO_SUCCESS) {
+      LOGI("TangoService_connectOnFrameAvailable(): Failed");
+      return false;
+    }
   // Set the reference frame pair after connect to service.
   // Currently the API will set this set below as default.
   TangoCoordinateFramePair pairs[2];
   pairs[0].base = TANGO_COORDINATE_FRAME_START_OF_SERVICE;
   pairs[0].target = TANGO_COORDINATE_FRAME_DEVICE;
 
+  // To align point clouds we're more worried about the frame-to-frame pose
   pairs[1].base = TANGO_COORDINATE_FRAME_PREVIOUS_DEVICE_POSE;
   pairs[1].target = TANGO_COORDINATE_FRAME_DEVICE;
   // Attach onPoseAvailable callback.
@@ -587,10 +626,27 @@ TangoData::~TangoData() {
   config_ = nullptr;
 
   delete[] depth_buffer;
-  //delete[] external_path;
 
-  if(frame_external_path != nullptr){ delete frame_external_path; frame_external_path = nullptr;}
-  if(xyzij_external_path != nullptr){ delete xyzij_external_path; xyzij_external_path = nullptr;}
-  if(pose_external_path  != nullptr){ delete pose_external_path;  pose_external_path  = nullptr;}
+  if(frame_external_path   != nullptr){ delete frame_external_path;   frame_external_path = nullptr;}
+  if(fisheye_external_path != nullptr){ delete fisheye_external_path; fisheye_external_path = nullptr;}
+  if(xyzij_external_path   != nullptr){ delete xyzij_external_path;   xyzij_external_path = nullptr;}
+  if(pose_external_path    != nullptr){ delete pose_external_path;    pose_external_path  = nullptr;}
   // TODO: Clean up queues, etc
+}
+
+std::string concat_path_and_name(std::string path, std::string name){
+    return path+name;
+}
+
+int write_cvmat_to_jpeg(string path, string img_name, Mat image){
+    std::string absolute_path = concat_path_and_name(path,img_name);
+    imwrite(absolute_path.c_str(), image);
+    //TODO: Error Code
+}
+
+int write_buffer_to_jpeg(string path, string img_name, const TangoImageBuffer * image){
+    Mat imageRGBA(image->height, image->width, CV_8UC4, image->data); // TODO: Convert format from RGBA_8888 to BGRA_8888
+    write_cvmat_to_jpeg(path,img_name,imageRGBA);
+    imageRGBA.release();
+    //TODO: Error Code
 }

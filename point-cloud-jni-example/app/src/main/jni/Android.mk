@@ -17,8 +17,9 @@ LOCAL_PATH:= $(call my-dir)
 PROJECT_ROOT:= $(call my-dir)/../../../../..
 
 # TANGO_ROOT := Should be defined in your ENVIRONMENT
-# OPENCV_ROOT := Should be defined in your ENVIRONMENT
-
+TEGRA_ROOT := /home/drichmond/Android/NVPACK/
+OPENCV_ROOT := $(TEGRA_ROOT)/OpenCV-2.4.8.2-Tegra-sdk/
+CUDA_ROOT := $(TEGRA_ROOT)/cuda-6.5/
 PCL_ROOT   := /home/drichmond/Research/repositories/git/pcl-superbuild/CMakeExternals/Install/pcl-android/
 BOOST_ROOT := /home/drichmond/Research/repositories/git/pcl-superbuild/CMakeExternals/Source/boost/
 EIGEN_ROOT := /home/drichmond/Research/repositories/git/pcl-superbuild/CMakeExternals/Source/eigen/
@@ -38,7 +39,6 @@ include $(OPENCV_ROOT)/sdk/native/jni/OpenCV.mk
 
 LOCAL_MODULE    := libpoint_cloud_jni_example
 LOCAL_SHARED_LIBRARIES += libtango-prebuilt
-LOCAL_STATIC_LIBRARIES += libpclio-prebuilt libboost-prebuilt
 LOCAL_CFLAGS    := -std=c++11 -fexceptions
 
 LOCAL_C_INCLUDES := $(TANGO_ROOT)/tango-service-sdk/include/ \
@@ -48,7 +48,8 @@ LOCAL_C_INCLUDES := $(TANGO_ROOT)/tango-service-sdk/include/ \
                     $(OPENCV_ROOT)/sdk/native/jni/include/ \
                     $(BOOST_ROOT)/boost_1_45_0/ \
                     $(PCL_ROOT)/include/pcl-1.6/ \
-                    $(EIGEN_ROOT)/
+                    $(EIGEN_ROOT)/ \
+                    $(CUDA_ROOT)/include/
 
 LOCAL_SRC_FILES := tango_data.cpp \
                    tango_pointcloud.cpp \
@@ -65,6 +66,8 @@ LOCAL_LDLIBS    := -llog -lGLESv2 -L$(SYSROOT)/usr/lib
 LOCAL_LDLIBS    += -L$(BOOST_ROOT)/libs/armeabi-v7a/ -lboost_thread
 # PCL Libraries
 LOCAL_LDLIBS    += -L$(PCL_ROOT)/lib/ -lpcl_io -lpcl_io_ply -lpcl_common -lpcl_octree
+# CUDA Libraries
+LOCAL_LDLIBS    += -L$(CUDA_ROOT)/targets/armv7-linux-androideabi/lib/ -lcudart_static
 include $(BUILD_SHARED_LIBRARY)
 
 $(call import-module,android/native_app_glue)

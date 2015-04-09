@@ -38,6 +38,9 @@
 #include <pcl/io/ply_io.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
+
+#include <cuda.h>
+#include <cuda_runtime.h>
 using namespace cv;
 
 const int kMeterToMillimeter = 1000;
@@ -87,6 +90,7 @@ class TangoData {
   pthread_t xyzij_thread;
   bool xyzij_terminate;
   std::queue<TangoXYZij*> xyzij_queue;
+  std::string * xyzij_external_path;
 
   pthread_mutex_t frame_mutex;
   TangoImageBuffer* frame_buffer;
@@ -94,7 +98,16 @@ class TangoData {
   pthread_t frame_thread;
   bool frame_terminate;
   std::queue<TangoImageBuffer*> frame_queue;
-  
+  std::string * frame_external_path;
+
+  pthread_mutex_t fisheye_mutex;
+  TangoImageBuffer* fisheye_buffer;
+  pthread_cond_t fisheye_cv;
+  pthread_t fisheye_thread;
+  bool fisheye_terminate;
+  std::queue<TangoImageBuffer*> fisheye_queue;
+  std::string * fisheye_external_path;
+
   pthread_mutex_t pose_mutex;
   TangoPoseData cur_pose_data;
   TangoPoseData prev_pose_data;
@@ -103,6 +116,7 @@ class TangoData {
   pthread_t pose_thread;
   bool pose_terminate;
   std::queue<TangoPoseData*> pose_queue;
+  std::string  * pose_external_path;
 
   int pose_status_count;
   float pose_frame_delta_time;
@@ -124,10 +138,6 @@ class TangoData {
   std::string event_string;
   std::string lib_version_string;
   std::string pose_string;
-
-  std::string  * frame_external_path;
-  std::string  * xyzij_external_path;
-  std::string  * pose_external_path;
  private:
   TangoConfig config_;
 };

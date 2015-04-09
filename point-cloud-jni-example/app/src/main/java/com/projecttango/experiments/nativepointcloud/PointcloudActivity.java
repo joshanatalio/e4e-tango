@@ -183,7 +183,7 @@ public class PointcloudActivity extends Activity implements OnClickListener {
                 "Tango Service initialize internal error", Toast.LENGTH_SHORT).show();
             }
           }
-          // Set External Storage Directory
+          // Set External Storage Directories (these must be set BEFORE calling connect callbacks)
           File file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[1], "");
           file.mkdirs();
           Log.i("onActivityResult:", file.getAbsolutePath());
