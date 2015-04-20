@@ -208,6 +208,8 @@ public class PointcloudActivity extends Activity implements OnClickListener {
           }
           TangoJNINative.setupExtrinsics();
           mIsPermissionIntentCalled = true;
+
+          TangoJNINative.startScan("Test");
         }
     }
   }

@@ -305,6 +305,19 @@ Java_com_projecttango_experiments_nativepointcloud_TangoJNINative_setExternalSto
 
 }
 
+JNIEXPORT void JNICALL
+Java_com_projecttango_experiments_nativepointcloud_TangoJNINative_startScan(
+    JNIEnv* env, jobject, jstring scanName) {
+    const char * nativeScanName = env->GetStringUTFChars(scanName, 0);
+    std::string strScanName = string(nativeScanName);
+
+    if (!TangoData::GetInstance().start_scan(strScanName)) {
+      LOGE("Tango startScan failed");
+    }
+    env->ReleaseStringUTFChars(scanName, nativeScanName);
+}
+
+
 JNIEXPORT jint JNICALL
 Java_com_projecttango_experiments_nativepointcloud_TangoJNINative_connect(
     JNIEnv*, jobject) {

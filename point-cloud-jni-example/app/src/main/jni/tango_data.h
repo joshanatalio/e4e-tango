@@ -80,43 +80,52 @@ class TangoData {
   //void UpdateFrameData();
 
   pthread_mutex_t event_mutex;
-
+  pthread_cond_t scan_cv; // Broadcast on this CV when a new scan is started
+  bool start_scan(string);
+  bool stop_scan();
   float* depth_buffer;
   uint32_t depth_buffer_size;
   bool is_xyzij_dirty;
 
+  // Depth map threading variables
   pthread_mutex_t xyzij_mutex;
   pthread_cond_t xyzij_cv;
   pthread_t xyzij_thread;
-  bool xyzij_terminate;
+  bool xyzij_active;
+  bool xyzij_flush;
   std::queue<TangoXYZij*> xyzij_queue;
   std::string * xyzij_external_path;
 
+  // Color Camera threading variables
   pthread_mutex_t frame_mutex;
-  TangoImageBuffer* frame_buffer;
   pthread_cond_t frame_cv;
   pthread_t frame_thread;
-  bool frame_terminate;
+  bool frame_active;
+  bool frame_flush;
   std::queue<TangoImageBuffer*> frame_queue;
   std::string * frame_external_path;
 
+  // Fisheye Camera Threading Variables
   pthread_mutex_t fisheye_mutex;
-  TangoImageBuffer* fisheye_buffer;
   pthread_cond_t fisheye_cv;
   pthread_t fisheye_thread;
-  bool fisheye_terminate;
+  bool fisheye_active;
+  bool fisheye_flush;
   std::queue<TangoImageBuffer*> fisheye_queue;
   std::string * fisheye_external_path;
 
+  // Pose Data Threading Variables
   pthread_mutex_t pose_mutex;
+  pthread_cond_t pose_cv;
+  pthread_t pose_thread;
+  bool pose_active;
+  bool pose_flush;
+  std::queue<TangoPoseData*> pose_queue;
+  std::string  * pose_external_path;
+
   TangoPoseData cur_pose_data;
   TangoPoseData prev_pose_data;
   bool is_pose_dirty;
-  pthread_cond_t pose_cv;
-  pthread_t pose_thread;
-  bool pose_terminate;
-  std::queue<TangoPoseData*> pose_queue;
-  std::string  * pose_external_path;
 
   int pose_status_count;
   float pose_frame_delta_time;
@@ -138,6 +147,8 @@ class TangoData {
   std::string event_string;
   std::string lib_version_string;
   std::string pose_string;
+
+  std::string * scan_name;
  private:
   TangoConfig config_;
 };

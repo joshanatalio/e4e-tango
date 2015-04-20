@@ -18,7 +18,8 @@ PROJECT_ROOT:= $(call my-dir)/../../../../..
 
 # TANGO_ROOT := Should be defined in your ENVIRONMENT
 TEGRA_ROOT := /home/drichmond/Android/NVPACK/
-OPENCV_ROOT := $(TEGRA_ROOT)/OpenCV-2.4.8.2-Tegra-sdk/
+OPENCV_ROOT := /home/drichmond/Research/repositories/sourceforge/OpenCV-android-sdk/
+#$(TEGRA_ROOT)/OpenCV-2.4.8.2-Tegra-sdk/
 CUDA_ROOT := $(TEGRA_ROOT)/cuda-6.5/
 PCL_ROOT   := /home/drichmond/Research/repositories/git/pcl-superbuild/CMakeExternals/Install/pcl-android/
 BOOST_ROOT := /home/drichmond/Research/repositories/git/pcl-superbuild/CMakeExternals/Source/boost/

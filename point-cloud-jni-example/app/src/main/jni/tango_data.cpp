@@ -66,6 +66,7 @@ static void onFrameAvailable(void* context, TangoCameraId id, const TangoImageBu
     pthread_mutex_lock(&TangoData::GetInstance().fisheye_mutex);
     delete next_enqueue;
     // Enqueue
+    // TODO: If Scan Active
     // TangoData::GetInstance().fisheye_queue.push(next_enqueue);
     pthread_cond_signal(&TangoData::GetInstance().fisheye_cv);
     // Signal condition variable
@@ -75,6 +76,7 @@ static void onFrameAvailable(void* context, TangoCameraId id, const TangoImageBu
     pthread_mutex_lock(&TangoData::GetInstance().frame_mutex);
     delete next_enqueue;
     // Enqueue
+    // TODO: If Scan Active
     // TangoData::GetInstance().frame_queue.push(next_enqueue);
     pthread_cond_signal(&TangoData::GetInstance().frame_cv);
     // Signal condition variable
@@ -102,7 +104,7 @@ static void onXYZijAvailable(void*, const TangoXYZij* XYZ_ij) {
 	  
   memcpy(next_enqueue->ij, XYZ_ij->ij,XYZ_ij->ij_cols * XYZ_ij->ij_rows*sizeof(uint32_t));
 	  
-  // Enqueue (TODO)
+  // TODO: If Scan Active
   TangoData::GetInstance().xyzij_queue.push(next_enqueue);
   pthread_cond_signal(&TangoData::GetInstance().xyzij_cv);
 
@@ -150,6 +152,7 @@ static void onPoseAvailable(void*, const TangoPoseData* pose) {
       TangoData::GetInstance().cur_pose_data = *pose;
       TangoData::GetInstance().is_pose_dirty = true;
     } else if (pose->frame.base == TANGO_COORDINATE_FRAME_PREVIOUS_DEVICE_POSE) {
+        // TODO: If Scan Active
 	    TangoPoseData *next_enqueue = new TangoPoseData;
 	    //next_enqueue->orientation = new double[4];
 	    next_enqueue->orientation[0] = pose->orientation[0];
@@ -169,55 +172,6 @@ static void onPoseAvailable(void*, const TangoPoseData* pose) {
   }
 
   pthread_mutex_unlock(&TangoData::GetInstance().pose_mutex);
-}
-
-void * record_pose(void*){
-  TangoPoseData * current_pose;
-  pthread_mutex_lock(&TangoData::GetInstance().pose_mutex);
-  pthread_cond_wait(&TangoData::GetInstance().pose_cv, &TangoData::GetInstance().pose_mutex);
-  string file_path = *TangoData::GetInstance().pose_external_path + string("/pose.csv");
-  std::ofstream fp;
-  fp.open(file_path.c_str());
-  LOGI("Record Pose Started. File: %s",file_path.c_str());
-  while(!TangoData::GetInstance().pose_terminate){
-    while(!TangoData::GetInstance().pose_queue.size()){
-        pthread_cond_wait(&TangoData::GetInstance().pose_cv, &TangoData::GetInstance().pose_mutex);
-    }
-    current_pose = TangoData::GetInstance().pose_queue.front();
-    if(current_pose == nullptr)
-      LOGI("current_pose is null, queue size is %d",TangoData::GetInstance().pose_queue.size());
-    TangoData::GetInstance().pose_queue.pop();
-    fp << current_pose->timestamp << ",";
-    fp << current_pose->orientation[0] << "," << current_pose->orientation[1] << ",";
-    fp << current_pose->orientation[2] << "," << current_pose->orientation[3] << ",";
-    fp << current_pose->translation[0] << "," << current_pose->translation[1] << "," << current_pose->translation[2] << "\n";
-  }
-  fp.close();
-  pthread_mutex_unlock(&TangoData::GetInstance().pose_mutex);
-}
-
-void * record_frame(void*){
-  pthread_mutex_lock(&TangoData::GetInstance().frame_mutex);
-  pthread_cond_wait(&TangoData::GetInstance().frame_cv, &TangoData::GetInstance().frame_mutex);
-  // TODO: Wait for first signal to open file
-  LOGI("Record Frame Started");
-  while(!TangoData::GetInstance().frame_terminate){
-    while(!TangoData::GetInstance().frame_queue.size())
-        pthread_cond_wait(&TangoData::GetInstance().frame_cv, &TangoData::GetInstance().frame_mutex);
-  }
-  pthread_mutex_unlock(&TangoData::GetInstance().frame_mutex);
-}
-
-void * record_fisheye(void*){
-  pthread_mutex_lock(&TangoData::GetInstance().fisheye_mutex);
-  pthread_cond_wait(&TangoData::GetInstance().fisheye_cv, &TangoData::GetInstance().fisheye_mutex);
-  // TODO: Wait for first signal to open file
-  LOGI("Record fisheye Started");
-  while(!TangoData::GetInstance().fisheye_terminate){
-    while(!TangoData::GetInstance().fisheye_queue.size())
-        pthread_cond_wait(&TangoData::GetInstance().fisheye_cv, &TangoData::GetInstance().fisheye_mutex);
-  }
-  pthread_mutex_unlock(&TangoData::GetInstance().fisheye_mutex);
 }
 
 std::string to_str(double timestamp){
@@ -242,12 +196,12 @@ void write_xyz_file(std::string path, TangoXYZij * xyzij){
   fp.close();
 }
 
-void write_ply_file(std::string path, TangoXYZij * xyzij){
+void write_ply_file(std::string path, std::string scan_name, TangoXYZij * xyzij){
   pcl::PointCloud<pcl::PointXYZ> xyz;
   for(int i = 0; i < xyzij->xyz_count; i++){
     xyz.push_back(pcl::PointXYZ(xyzij->xyz[i][0],xyzij->xyz[i][1], xyzij->xyz[i][2]));
   }
-  pcl::io::savePLYFileBinary(path + string("/xyzij_") + to_str(xyzij->timestamp) + string(".ply"),xyz);
+  pcl::io::savePLYFileBinary(path + string("/")+ scan_name + string("_")+ to_str(xyzij->timestamp) + string(".ply"),xyz);
 }
 
 //TODO: How do we use the scan name? Can we change the camera focus?
@@ -272,54 +226,12 @@ void write_calibration(string path, string scan_name,
   fp.close();
 }
 
-void * record_xyzij(void*){
-  TangoXYZij * current_xyzij;
-  pthread_mutex_lock(&TangoData::GetInstance().xyzij_mutex);
-  pthread_cond_wait(&TangoData::GetInstance().xyzij_cv, &TangoData::GetInstance().xyzij_mutex);
-  // Write Camera Calibration Parameters
-  string file_path = *TangoData::GetInstance().pose_external_path + string("/calibration.csv");
-  std::ofstream fp;
-  fp.open(file_path.c_str());
-  while(!TangoData::GetInstance().xyzij_terminate){
-    while(!TangoData::GetInstance().xyzij_queue.size()){
-        pthread_cond_wait(&TangoData::GetInstance().xyzij_cv, &TangoData::GetInstance().xyzij_mutex);
-    }
-    current_xyzij = TangoData::GetInstance().xyzij_queue.front();
-    if(current_xyzij == nullptr)
-      LOGI("current_xyzij is null, queue size is %d",TangoData::GetInstance().xyzij_queue.size());
-    TangoData::GetInstance().xyzij_queue.pop();
-    write_ply_file(*TangoData::GetInstance().xyzij_external_path,current_xyzij);
-    //current_xyzij->xyz
-    delete[] current_xyzij->xyz;
-    delete[] current_xyzij->ij;
-    delete[] current_xyzij;
-  }
-  pthread_mutex_unlock(&TangoData::GetInstance().xyzij_mutex);
-}
 // Initialize Tango Service.
 TangoErrorType TangoData::Initialize(JNIEnv* env, jobject activity) {
   // The initialize function perform API and Tango Service version check,
   // if there is a mis-match between API and Tango Service version, the
   // function will return TANGO_INVALID.
   return TangoService_initialize(env, activity);
-}
-
-TangoData::TangoData() : config_(nullptr) {
-  is_xyzij_dirty = false;
-  is_pose_dirty = false;
-
-  frame_external_path = nullptr;
-  xyzij_external_path = nullptr;
-  pose_external_path = nullptr;
-
-  pthread_create(&pose_thread, nullptr, record_pose, nullptr);
-  pthread_create(&xyzij_thread, nullptr, record_xyzij, nullptr);
-  //pthread_create(&frame_thread, nullptr, record_frame, nullptr);
-  pthread_create(&fisheye_thread, nullptr, record_fisheye, nullptr);
-  d_2_ss_mat_motion = glm::mat4(1.0f);
-  d_2_ss_mat_depth = glm::mat4(1.0f);
-  d_2_imu_mat = glm::mat4(1.0f);
-  c_2_imu_mat = glm::mat4(1.0f);
 }
 
 // Set up Tango Configuration handle, and connecting all callbacks.
@@ -389,6 +301,35 @@ bool TangoData::setExternalStorageDirectory(string id, string path) {
     LOGI("Unknown ID: %s", id.c_str());
   }
   return true;
+}
+
+
+bool TangoData::stop_scan() {
+  if(scan_name){
+    LOGI("Stopping scan %s", scan_name->c_str());
+    frame_active = true;
+    xyzij_active = true;
+    fisheye_active = true;
+    pose_active = true;
+    void * args;
+    // Stop the work threads
+    // TODO: These need to be signalled until finished
+    pthread_join(pose_thread, &args);
+    LOGI("Pose thread joined");
+    pthread_join(xyzij_thread, &args);
+    LOGI("XYZij thread joined");
+    pthread_join(frame_thread, &args);
+    LOGI("Frame thread joined");
+    pthread_join(fisheye_thread, &args);
+    LOGI("Fisheye thread joined");
+    // Delete scan name when all threads are finished
+    delete scan_name;
+    scan_name = nullptr;
+    return true;
+  } else {
+    LOGI("No Scans active");
+    return true;
+  }
 }
 
 bool TangoData::ConnectCallbacks() {
@@ -649,4 +590,188 @@ int write_buffer_to_jpeg(string path, string img_name, const TangoImageBuffer * 
     write_cvmat_to_jpeg(path,img_name,imageRGBA);
     imageRGBA.release();
     //TODO: Error Code
+}
+
+void * record_xyzij(void * ){
+  TangoXYZij * current_xyzij;
+  TangoCameraIntrinsics calibration;
+
+  LOGI("Record XYZIJ Started for scan %s.",TangoData::GetInstance().scan_name->c_str());
+  // Write Camera Calibration Parameters
+  TangoService_getCameraIntrinsics(TANGO_CAMERA_DEPTH, &calibration);
+  write_calibration(*TangoData::GetInstance().xyzij_external_path,
+                    *TangoData::GetInstance().scan_name,
+                    calibration);
+  // Main Thread
+  while(true){
+    if((TangoData::GetInstance().xyzij_queue.size() == 0) &&
+       !TangoData::GetInstance().xyzij_active){
+      // Wait until we are signalled, which could happen on termination or new data
+      pthread_cond_wait(&TangoData::GetInstance().xyzij_cv,
+                        &TangoData::GetInstance().xyzij_mutex);
+
+    } else if (TangoData::GetInstance().xyzij_queue.size() > 0) {
+        // Read the front of the Queue
+        current_xyzij = TangoData::GetInstance().xyzij_queue.front();
+        if(current_xyzij == nullptr)
+          LOGI("current_xyzij is null, queue size is %d",
+               TangoData::GetInstance().xyzij_queue.size());
+        TangoData::GetInstance().xyzij_queue.pop();
+        write_ply_file(*TangoData::GetInstance().xyzij_external_path,
+                       *TangoData::GetInstance().scan_name,
+                       current_xyzij);
+        // Clean up allocated memory
+        delete[] current_xyzij->xyz;
+        delete[] current_xyzij->ij;
+        delete[] current_xyzij;
+
+    } else if (!TangoData::GetInstance().xyzij_active) {
+      // Exit the thread
+      pthread_mutex_unlock(&TangoData::GetInstance().xyzij_mutex);
+      break;
+
+    }
+  }
+}
+
+void * record_pose(void * ){
+  TangoPoseData * current_pose;
+  std::ofstream fp;
+  string file_name;
+
+  file_name = *TangoData::GetInstance().pose_external_path +string("/") +
+              *TangoData::GetInstance().scan_name + string("_pose.csv");
+  fp.open(file_name.c_str());
+  LOGI("Record Pose Started for scan %s. File: %s",TangoData::GetInstance().scan_name->c_str(),file_name.c_str());
+
+  // Main Thread
+  while(true){
+    if((TangoData::GetInstance().pose_queue.size() == 0) &&
+       !TangoData::GetInstance().pose_active){
+      // Wait until we are signalled, which could happen on termination or new data
+      pthread_cond_wait(&TangoData::GetInstance().pose_cv,
+                        &TangoData::GetInstance().pose_mutex);
+
+    } else if (TangoData::GetInstance().pose_queue.size() > 0) {
+      // Read the front of the Queue
+      current_pose = TangoData::GetInstance().pose_queue.front();
+      if(current_pose == nullptr)
+        LOGI("current_pose is null, queue size is %d",TangoData::GetInstance().pose_queue.size());
+      TangoData::GetInstance().pose_queue.pop();
+      fp << current_pose->timestamp << ",";
+      fp << current_pose->orientation[0] << "," << current_pose->orientation[1] << ",";
+      fp << current_pose->orientation[2] << "," << current_pose->orientation[3] << ",";
+      fp << current_pose->translation[0] << "," << current_pose->translation[1] << "," << current_pose->translation[2] << "\n";
+      delete current_pose;
+
+    } else if (!TangoData::GetInstance().pose_active) {
+      // Exit the thread
+      pthread_mutex_unlock(&TangoData::GetInstance().pose_mutex);
+      fp.close();
+      break;
+    }
+  }
+}
+
+void * record_frame(void * ){
+  TangoCameraIntrinsics calibration;
+
+  // Write Camera Calibration Parameters
+  TangoService_getCameraIntrinsics(TANGO_CAMERA_COLOR, &calibration);
+  write_calibration(*TangoData::GetInstance().frame_external_path,
+                    *TangoData::GetInstance().scan_name,
+                    calibration);
+  // Main Thread
+  while(true){
+    if((TangoData::GetInstance().frame_queue.size() == 0) &&
+       TangoData::GetInstance().frame_active){
+      // Wait until we are signalled, which could happen on termination or new data
+      pthread_cond_wait(&TangoData::GetInstance().frame_cv,
+                        &TangoData::GetInstance().frame_mutex);
+
+    } else if (TangoData::GetInstance().frame_queue.size() > 0) {
+    // TODO: Write data to the SD Card
+    } else if (!TangoData::GetInstance().frame_active) {
+      // Exit the thread
+      pthread_mutex_unlock(&TangoData::GetInstance().frame_mutex);
+      break;
+
+    }
+  }
+}
+
+void * record_fisheye(void * ){
+  TangoCameraIntrinsics calibration;
+
+  // Write Camera Calibration Parameters
+  TangoService_getCameraIntrinsics(TANGO_CAMERA_FISHEYE, &calibration);
+  write_calibration(*TangoData::GetInstance().fisheye_external_path,
+                    *TangoData::GetInstance().scan_name,
+                    calibration);
+  // Main Thread
+  while(true){
+    if((TangoData::GetInstance().fisheye_queue.size() == 0) &&
+       TangoData::GetInstance().fisheye_active){
+      // Wait until we are signalled, which could happen on termination or new data
+      pthread_cond_wait(&TangoData::GetInstance().fisheye_cv,
+                        &TangoData::GetInstance().fisheye_mutex);
+
+    } else if (TangoData::GetInstance().fisheye_queue.size() > 0) {
+    // TODO: Write data to the SD Card
+    } else if (!TangoData::GetInstance().fisheye_active) {
+      // Exit the thread
+      pthread_mutex_unlock(&TangoData::GetInstance().fisheye_mutex);
+      break;
+
+    }
+  }
+}
+
+TangoData::TangoData() : config_(nullptr) {
+  is_xyzij_dirty = false;
+  is_pose_dirty = false;
+
+  // Set the external path names to null
+  frame_external_path = nullptr;
+  fisheye_external_path = nullptr;
+  xyzij_external_path = nullptr;
+  pose_external_path = nullptr;
+
+  // Set the current scan name to null
+  scan_name = nullptr;
+
+  // Set the termination and flush conditions
+  xyzij_active = false;
+  fisheye_active = false;
+  frame_active = false;
+  pose_active = false;
+
+  // Set the flush conditions to true, so that
+  xyzij_flush = false;
+  fisheye_flush = false;
+  frame_flush = false;
+  pose_flush = false;
+
+  d_2_ss_mat_motion = glm::mat4(1.0f);
+  d_2_ss_mat_depth = glm::mat4(1.0f);
+  d_2_imu_mat = glm::mat4(1.0f);
+  c_2_imu_mat = glm::mat4(1.0f);
+}
+
+bool TangoData::start_scan(string name) {
+  if(scan_name){
+    LOGI("Scan %s, could not be started. Scan %s still active", name.c_str(), (*scan_name).c_str());
+    return false; // Scan stil active
+  } else {
+    LOGI("Starting scan %s", name.c_str());
+    scan_name = new string(name.c_str());
+
+    // Launch the work threads (They will block on the SCAN CV)
+    pthread_create(&pose_thread, nullptr, record_pose, nullptr);
+    pthread_create(&xyzij_thread, nullptr, record_xyzij, nullptr);
+    pthread_create(&frame_thread, nullptr, record_frame, nullptr);
+    pthread_create(&fisheye_thread, nullptr, record_fisheye, nullptr);
+    //pthread_cond_broadcast(&scan_cv);
+    return true;
+  }
 }
