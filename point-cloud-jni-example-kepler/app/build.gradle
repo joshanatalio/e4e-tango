@@ -8,6 +8,9 @@ android {
         applicationId "com.projecttango.experiments.nativepointcloud"
         minSdkVersion 19
         targetSdkVersion 19
+        ndk {
+            moduleName "libpoint_cloud_jni_example"
+        }
     }
 
     sourceSets.main {

@@ -24,6 +24,8 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.graphics.Point;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
+import android.os.Debug;
+import android.os.Environment;
 import android.util.Log;
 import android.view.Display;
 import android.view.MotionEvent;
@@ -32,6 +34,8 @@ import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.io.File;
 
 /**
  * Main activity shows point cloud scene.
@@ -179,7 +183,14 @@ public class PointcloudActivity extends Activity implements OnClickListener {
                 "Tango Service initialize internal error", Toast.LENGTH_SHORT).show();
             }
           }
-
+          // Set External Storage Directories (these must be set BEFORE calling connect callbacks)
+          File file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[1], "");
+          file.mkdirs();
+          Log.i("onActivityResult:", file.getAbsolutePath());
+          TangoJNINative.setExternalStorageDirectory("TANGO_CAMERA_COLOR", file.getAbsolutePath());
+          TangoJNINative.setExternalStorageDirectory("TANGO_CAMERA_FISHEYE", file.getAbsolutePath());
+          TangoJNINative.setExternalStorageDirectory("TANGO_CAMERA_DEPTH", file.getAbsolutePath());
+          TangoJNINative.setExternalStorageDirectory("TANGO_POSE", file.getAbsolutePath());
           // Connect Tango callbacks.
           TangoJNINative.connectCallbacks();
 
@@ -197,6 +208,8 @@ public class PointcloudActivity extends Activity implements OnClickListener {
           }
           TangoJNINative.setupExtrinsics();
           mIsPermissionIntentCalled = true;
+
+          TangoJNINative.startScan("Test");
         }
     }
   }
@@ -259,6 +272,52 @@ public class PointcloudActivity extends Activity implements OnClickListener {
     }
     return true;
   }
+
+    private void startLoggerThread(){
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                    try {
+                        // We'll block in the JNI
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }).start();
+    }
+/*
+    private void startCamFishThread(){
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                    try {
+                        // We'll block in the JNI
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }).start();
+    }
+
+private void startPtCloudThread(){
+    new Thread(new Runnable() {
+        @Override
+        public void run() {
+            while (true) {
+                try {
+                    // We'll block in the JNI
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }).start();
+}
+*/
 
   private void startUIThread() {
     new Thread(new Runnable() {
