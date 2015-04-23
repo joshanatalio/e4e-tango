@@ -70,6 +70,9 @@ static void onXYZijAvailable(void*, const TangoXYZij* XYZ_ij) {
   TangoData::GetInstance().is_xyzij_dirty = true;
 
   pthread_mutex_unlock(&TangoData::GetInstance().xyzij_mutex);
+
+  ClsTangoXYZij * data = new ClsTangoXYZij(XYZ_ij);
+  TangoData::GetInstance().xyzij_recorder.enqueue_record(data);
 }
 
 // Tango event callback.
@@ -82,12 +85,17 @@ static void onTangoEvent(void*, const TangoEvent* event) {
 
 // This callback function is called when new pose update is available.
 static void onPoseAvailable(void*, const TangoPoseData* pose) {
-  pthread_mutex_lock(&TangoData::GetInstance().pose_mutex);
-  if (pose != nullptr) {
-    TangoData::GetInstance().cur_pose_data = *pose;
-    TangoData::GetInstance().is_pose_dirty = true;
-  }
-  pthread_mutex_unlock(&TangoData::GetInstance().pose_mutex);
+	if (pose->frame.base == TANGO_COORDINATE_FRAME_START_OF_SERVICE) {
+		pthread_mutex_lock(&TangoData::GetInstance().pose_mutex);
+		if (pose != nullptr) {
+			TangoData::GetInstance().cur_pose_data = *pose;
+			TangoData::GetInstance().is_pose_dirty = true;
+		}
+		pthread_mutex_unlock(&TangoData::GetInstance().pose_mutex);
+	} else if (pose->frame.base == TANGO_COORDINATE_FRAME_PREVIOUS_DEVICE_POSE) {
+		ClsTangoPoseData * data = new ClsTangoPoseData(pose);
+		TangoData::GetInstance().pose_recorder.enqueue_record(data);
+	}
 }
 
 // Initialize Tango Service.
@@ -101,6 +109,12 @@ TangoErrorType TangoData::Initialize(JNIEnv* env, jobject activity) {
 TangoData::TangoData() : config_(nullptr) {
   is_xyzij_dirty = false;
   is_pose_dirty = false;
+  rgb_recorder.set_recorder_name(std::string("RGB"));
+  fisheye_recorder.set_recorder_name(std::string("FISHEYE"));
+  
+  xyzij_recorder.set_recorder_name(std::string("XYZIJ"));
+
+  pose_recorder.set_recorder_name(std::string("POSE"));
 
   d_2_ss_mat_motion = glm::mat4(1.0f);
   d_2_ss_mat_depth = glm::mat4(1.0f);
@@ -121,6 +135,13 @@ bool TangoData::SetConfig() {
   if (TangoConfig_setBool(config_, "config_enable_depth", true) !=
       TANGO_SUCCESS) {
     LOGE("config_enable_depth Failed");
+    return false;
+  }
+
+  // Enable depth.
+  if (TangoConfig_setBool(config_, "config_enable_color_camera", true) !=
+      TANGO_SUCCESS) {
+    LOGE("config_enable_camera Failed");
     return false;
   }
 
@@ -151,18 +172,25 @@ bool TangoData::SetConfig() {
 
   return true;
 }
-static void onFrameAvailable(void* context, TangoCameraId id, const TangoImageBuffer* buffer) {
-  // Copy TangoImageBuffer
-  if(!buffer){
+static void onRGBFrameAvailable(void* context, TangoCameraId id, const TangoImageBuffer* buffer) {
+  if(!buffer || !buffer->data){
     return;
   }
-  if(!buffer->data){
-    return;
-  }
-  LOGI("onFrameAvailable called");
+  //LOGI("onRGBFrameAvailable called. Got %d by %d image with format %x", buffer->height, buffer->width, buffer->format);
+
+  ClsTangoImageBuffer * data = new ClsTangoImageBuffer(buffer,YUV_NV21);
+  TangoData::GetInstance().rgb_recorder.enqueue_record(data);
 }
 
+static void onFISHEYEFrameAvailable(void* context, TangoCameraId id, const TangoImageBuffer* buffer) {
+  if(!buffer || !buffer->data){
+    return;
+  }
+  // LOGI("onFISHEYEFrameAvailable called. Got %d by %d image with format %x", buffer->height, buffer->width, buffer->format);
 
+  ClsTangoImageBuffer * data = new ClsTangoImageBuffer(buffer,YUV_NV21);
+  TangoData::GetInstance().fisheye_recorder.enqueue_record(data);
+}
 
 bool TangoData::ConnectCallbacks() {
   // Attach the onXYZijAvailable callback.
@@ -173,24 +201,28 @@ bool TangoData::ConnectCallbacks() {
 
   // Set the reference frame pair after connect to service.
   // Currently the API will set this set below as default.
-  TangoCoordinateFramePair pairs;
-  pairs.base = TANGO_COORDINATE_FRAME_START_OF_SERVICE;
-  pairs.target = TANGO_COORDINATE_FRAME_DEVICE;
+  // Set the reference frame pair after connect to service.
+  // Currently the API will set this set below as default.
+  TangoCoordinateFramePair pairs[2];
+  pairs[0].base = TANGO_COORDINATE_FRAME_START_OF_SERVICE;
+  pairs[0].target = TANGO_COORDINATE_FRAME_DEVICE;
 
-  // Attach onPoseAvailable callback.
-  if (TangoService_connectOnPoseAvailable(1, &pairs, onPoseAvailable) !=
-      TANGO_SUCCESS) {
-    LOGI("TangoService_connectOnPoseAvailable(): Failed");
+  // To align point clouds we're more worried about the frame-to-frame pose
+  pairs[1].base = TANGO_COORDINATE_FRAME_PREVIOUS_DEVICE_POSE;
+  pairs[1].target = TANGO_COORDINATE_FRAME_DEVICE;
+
+    // Attach the frameAvailable callback.
+  if ((TangoService_connectOnFrameAvailable(TANGO_CAMERA_COLOR, nullptr, onRGBFrameAvailable)) != TANGO_SUCCESS) {
+    LOGI("TangoService_connectOnFrameAvailable(RGB): Failed");
     return false;
   }
-    // Attach the frameAvailable callback.
-    if ((TangoService_connectOnFrameAvailable(TANGO_CAMERA_COLOR, nullptr, onFrameAvailable)) != TANGO_SUCCESS) {
-      LOGI("TangoService_connectOnFrameAvailable(): Failed");
-      return false;
-    }
+  if ((TangoService_connectOnFrameAvailable(TANGO_CAMERA_FISHEYE, nullptr, onFISHEYEFrameAvailable)) != TANGO_SUCCESS) {
+    LOGI("TangoService_connectOnFrameAvailable(FISHEYE): Failed");
+    return false;
+  }
 
   // Attach onPoseAvailable callback.
-  if (TangoService_connectOnPoseAvailable(1, &pairs, onPoseAvailable) !=
+  if (TangoService_connectOnPoseAvailable(2, pairs, onPoseAvailable) !=
       TANGO_SUCCESS) {
     LOGI("TangoService_connectOnPoseAvailable(): Failed");
     return false;
@@ -339,6 +371,41 @@ glm::mat4 TangoData::GetOC2OWMat(bool is_depth_pose) {
     return ss_2_ow_mat * temp * glm::inverse(d_2_imu_mat) * c_2_imu_mat *
            oc_2_c_mat;
   }
+}
+
+bool TangoData::start_scan(std::string name) {
+	LOGI("Starting scan %s", name.c_str());
+	// Launch the work threads (They will block on the SCAN CV)
+	rgb_recorder.start_record(name);
+	fisheye_recorder.start_record(name);
+
+	pose_recorder.start_record(name);
+
+	xyzij_recorder.start_record(name);
+
+	return true;
+}
+
+bool TangoData::stop_scan() {
+	LOGI("Stopping currently active scan");
+	//rgb_recorder.stop_record();
+	return true;
+}
+
+bool TangoData::setExternalStorageDirectory(std::string id, std::string path) {
+  LOGI("Setting External Storage Directory for ID %s to: %s", id.c_str(), path.c_str());
+  if(id == std::string("TANGO_CAMERA_COLOR")){
+	  rgb_recorder.set_record_path(path);
+  } else if(id == std::string("TANGO_CAMERA_FISHEYE")){
+	  fisheye_recorder.set_record_path(path);
+  } else if(id == std::string("TANGO_CAMERA_DEPTH")){
+	  xyzij_recorder.set_record_path(path);
+  } else if(id == std::string("TANGO_POSE")){
+	  pose_recorder.set_record_path(path);
+  } else {
+    LOGI("Unknown ID: %s", id.c_str());
+  }
+  return true;
 }
 
 // Set up extrinsics transformations:

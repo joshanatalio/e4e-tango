@@ -293,6 +293,41 @@ Java_com_projecttango_experiments_nativepointcloud_TangoJNINative_connectCallbac
   }
 }
 
+JNIEXPORT void JNICALL
+Java_com_projecttango_experiments_nativepointcloud_TangoJNINative_setExternalStorageDirectory(
+    JNIEnv* env, jobject, jstring id, jstring path) {
+    const char * nativeId = env->GetStringUTFChars(id, 0);
+    const char * nativePath = env->GetStringUTFChars(path, 0);
+    std::string strId = std::string(nativeId);
+    std::string strPath = std::string(nativePath);
+    LOGI("Set external storage directory to: %s", nativePath);
+    if (!TangoData::GetInstance().setExternalStorageDirectory(strId, strPath)) {
+      LOGE("Tango setExternalStorageDirectory failed");
+    }
+    env->ReleaseStringUTFChars(path, nativePath);
+    env->ReleaseStringUTFChars(id, nativeId);
+
+}
+
+JNIEXPORT void JNICALL
+Java_com_projecttango_experiments_nativepointcloud_TangoJNINative_startScan(
+    JNIEnv* env, jobject, jstring scanName) {
+    const char * nativeScanName = env->GetStringUTFChars(scanName, 0);
+    std::string strScanName = std::string(nativeScanName);
+
+    if (!TangoData::GetInstance().start_scan(strScanName)) {
+      LOGE("Tango startScan failed");
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_projecttango_experiments_nativepointcloud_TangoJNINative_stopScan(
+    JNIEnv* env, jobject) {
+    if (!TangoData::GetInstance().stop_scan()) {
+     LOGE("Tango stopScan failed");
+    }
+}
+
 JNIEXPORT jint JNICALL
 Java_com_projecttango_experiments_nativepointcloud_TangoJNINative_connect(
     JNIEnv*, jobject) {

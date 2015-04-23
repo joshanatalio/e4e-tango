@@ -25,6 +25,10 @@
 
 #include <tango_client_api.h>
 #include "tango-gl/util.h"
+#include "recorder.hpp"
+#include "ClsTangoImageBuffer.hpp"
+#include "ClsTangoPoseData.hpp"
+#include "ClsTangoXYZij.hpp"
 
 const int kMeterToMillimeter = 1000;
 const int kVersionStringLength = 27;
@@ -93,6 +97,14 @@ class TangoData {
   std::string lib_version_string;
   std::string pose_string;
 
+  recorder<ClsTangoImageBuffer> rgb_recorder;
+  recorder<ClsTangoImageBuffer> fisheye_recorder;
+  recorder<ClsTangoPoseData> pose_recorder;
+  recorder<ClsTangoXYZij> xyzij_recorder;
+
+  bool start_scan(std::string);
+  bool stop_scan();
+  bool setExternalStorageDirectory(std::string id, std::string path);
  private:
   TangoConfig config_;
 };

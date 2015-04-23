@@ -32,6 +32,12 @@ public class TangoJNINative {
 
   public static native void setupExtrinsics();
 
+  public static native void setExternalStorageDirectory(String Id, String path);
+
+  public static native void startScan(String scanName);
+
+  public static native void stopScan();
+
   public static native int connect();
 
   public static native void connectCallbacks();

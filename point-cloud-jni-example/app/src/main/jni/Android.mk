@@ -15,11 +15,16 @@
 #
 LOCAL_PATH:= $(call my-dir)
 PROJECT_ROOT:= $(call my-dir)/../../../../..
+UTIL_ROOT := /home/drichmond/Research/repositories/git/e4e/e4e-tango/util
 
 include $(CLEAR_VARS)
+OPENCV_CAMERA_MODULES := on
+OPENCV_INSTALL_MODULES := on
+include $(OPENCV_ROOT)/sdk/native/jni/OpenCV.mk
+
 LOCAL_MODULE    := libpoint_cloud_jni_example
-LOCAL_SHARED_LIBRARIES := tango_client_api
-LOCAL_CFLAGS    := -std=c++11
+LOCAL_SHARED_LIBRARIES += tango_client_api
+LOCAL_CFLAGS    := -std=c++11 -fexceptions
 
 LOCAL_SRC_FILES := tango_data.cpp \
                    tango_pointcloud.cpp \
@@ -35,9 +40,18 @@ LOCAL_SRC_FILES := tango_data.cpp \
                    $(TANGO_ROOT)/tango-gl/util.cpp
 
 LOCAL_C_INCLUDES := $(TANGO_ROOT)/tango-gl/include \
-                    $(TANGO_ROOT)/third-party/glm/
+                    $(TANGO_ROOT)/third-party/glm/ \
+                    $(OPENCV_ROOT)/sdk/native/jni/include/ \
+                    $(BOOST_ROOT)/boost_1_45_0/ \
+                    $(PCL_ROOT)/include/pcl-1.6/ \
+                    $(EIGEN_ROOT)/ \
+                    $(UTIL_ROOT)/
 
 LOCAL_LDLIBS    := -llog -lGLESv2 -L$(SYSROOT)/usr/lib
+# Boost Libraries
+LOCAL_LDLIBS    += -L$(BOOST_ROOT)/libs/armeabi-v7a/ -lboost_thread
+# PCL Libraries
+LOCAL_LDLIBS    += -L$(PCL_ROOT)/lib/ -lpcl_io -lpcl_io_ply -lpcl_common -lpcl_octree
 include $(BUILD_SHARED_LIBRARY)
 
 $(call import-add-path, $(TANGO_ROOT))

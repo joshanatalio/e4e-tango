@@ -1,4 +1,4 @@
-/home/drichmond/Research/repositories/git/tango-examples-c/point-cloud-jni-example/app/src/main/obj/local/armeabi-v7a/objs/point_cloud_jni_example//home/drichmond/Research/repositories/git/tango-examples-c//tango-gl/transform.o: \
+/home/drichmond/Research/repositories/git/e4e/e4e-tango/point-cloud-jni-example/app/src/main/obj/local/armeabi-v7a/objs/point_cloud_jni_example//home/drichmond/Research/repositories/git/tango-examples-c//tango-gl/transform.o: \
  /home/drichmond/Research/repositories/git/tango-examples-c//tango-gl/transform.cpp \
  /home/drichmond/Research/repositories/git/tango-examples-c//tango-gl/include/tango-gl/transform.h \
  /home/drichmond/Research/repositories/git/tango-examples-c//third-party/glm/glm/glm.hpp \
