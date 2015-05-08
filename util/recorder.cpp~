@@ -1,0 +1,80 @@
+#include "recorder.hpp"
+std::string to_str(double timestamp){
+  std::ostringstream stm ;
+  stm << timestamp ;
+  return stm.str();
+}
+
+template <class T> recorder<T>::recorder(){
+	record_path = nullptr;
+	record_name = nullptr;
+	state_active = false;
+	// TODO: Write parameters
+}
+
+template <class T> recorder<T>::~recorder(){
+	if(state_active){
+		this->LOGI("Scan was still active on deletion!");
+		stop_record();
+	}
+	while(data_queue.size() > 0){
+		custom_free(data_queue.pop());
+	}
+}
+
+template <class T> T* recorder<T>::dequeue_record(bool wait){
+	T * data;
+	pthread_mutex_lock(&data_mutex); // TODO
+	if(data_queue.empty() && wait){
+		pthread_cond_wait(&data_cv, &data_mutex);
+	} 
+	if(data_queue.empty()){
+		return nullptr;
+	}
+	
+	data = data_queue.front();
+	if(data == nullptr) {
+		this->LOGI("Removed element is null (size is %d)",data_queue.size());
+	}
+	data_queue.pop();
+	pthread_mutex_unlock(&data_mutex);
+	return data;
+}
+
+template <class T> void * recorder<T>::record_thread(void *){
+	this->LOGI("Thread Started");
+	T * data;
+	while(true){
+		if(data = dequeue_record(state_active)){
+			// Read the front of the Queue
+			data = dequeue_record(state_active);
+			data->write_to_file(record_path, to_str(data->timestamp), record_name);
+			delete data;
+		} else if(!state_active){
+			break;
+		}
+	}
+	return nullptr;
+}
+
+template <class T> int recorder<T>::stop_record(){
+	if(state_active){
+		state_active = false;
+		void * args;
+		pthread_join(thread_handle,args);
+		this->LOGI("Thread joined");
+	}else{
+		this->LOGE("No scans were active!");
+	}
+}
+
+template <class T> int recorder<T>::set_record_path(std::string record_path){
+	this.record_path = record_path;
+}
+
+template <class T> int recorder<T>::start_record(std::string record_name){
+	this.record_name = record_name;
+	state_active = true;
+	pthread_create(&thread_handle, nullptr, record_thread, nullptr);
+}
+

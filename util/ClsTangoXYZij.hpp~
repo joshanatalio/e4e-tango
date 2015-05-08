@@ -1,0 +1,50 @@
+#ifndef CLSTANGOXYZIJ_HPP
+#define CLSTANGOXYZIJ_HPP
+#include <tango_client_api.h>
+
+#include <pcl/io/ply_io.h>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
+
+class ClsTangoXYZij:public TangoXYZij{
+std::string to_str(double timestamp){
+	std::ostringstream stm ;
+	stm << timestamp ;
+	return stm.str();
+}
+public:
+	ClsTangoXYZij(TangoXYZij* data){
+		ij_rows = data->ij_rows;
+		ij_cols = data->ij_cols;
+		xyz_count = data->xyz_count;
+		timestamp = data->timestamp;
+		xyz = new float[data->xyz_count][3];
+        memcpy(xyz, data->xyz
+			data->xyz_count * 3*sizeof(data->xyz[0]));
+		ij = new uint32_t[data->ij_cols * data->ij_rows];
+	}
+	
+	~ClsTangoXYZij(){
+		delete[] xyz;
+		delete[] ij;
+
+		xyz = nullptr;
+		ij = nullptr;
+	}
+
+	int write_to_file(std::string file_path, std::string record_name){
+		pcl::PointCloud<pcl::PointXYZ> xyz;
+		std::string filename = file_path + string("/");
+		filename += record_name + std::string("_") + to_str(data->timestamp) + std::string(".ply");
+
+		for(int i = 0; i < data->xyz_count; i++){
+			xyz.push_back(pcl::PointXYZ(data->xyz[i][0],data->xyz[i][1], data->xyz[i][2]));
+		}
+		pcl::io::savePLYFileBinary(filename.c_str(),xyz);
+		//TODO: Error Code
+		return 0;
+	}
+private:
+	
+};
+#endif
