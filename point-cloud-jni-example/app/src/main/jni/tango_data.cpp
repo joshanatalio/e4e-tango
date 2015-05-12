@@ -15,6 +15,7 @@
 */
 
 #include "tango_data.h"
+#include <malloc.h>
 
 static float prev_depth_timestamp = 0.0f;
 
@@ -176,17 +177,18 @@ static void onRGBFrameAvailable(void* context, TangoCameraId id, const TangoImag
   if(!buffer || !buffer->data){
     return;
   }
-  //LOGI("onRGBFrameAvailable called. Got %d by %d image with format %x", buffer->height, buffer->width, buffer->format);
+  LOGI("onFISHEYEFrameAvailable called. Got %d by %d image (%d pixels/line) with format %x", buffer->height, buffer->width, buffer->stride, buffer->format);
 
   ClsTangoImageBuffer * data = new ClsTangoImageBuffer(buffer,YUV_NV21);
   TangoData::GetInstance().rgb_recorder.enqueue_record(data);
 }
 
 static void onFISHEYEFrameAvailable(void* context, TangoCameraId id, const TangoImageBuffer* buffer) {
-  if(!buffer || !buffer->data){
+  if(buffer == nullptr || buffer->data == nullptr){
     return;
   }
-  // LOGI("onFISHEYEFrameAvailable called. Got %d by %d image with format %x", buffer->height, buffer->width, buffer->format);
+  LOGI("onFISHEYEFrameAvailable called. Got %d by %d image (%d pixels/line) with format %x",
+  buffer->height, buffer->width, buffer->stride, buffer->format);
 
   ClsTangoImageBuffer * data = new ClsTangoImageBuffer(buffer,YUV_NV21);
   TangoData::GetInstance().fisheye_recorder.enqueue_record(data);
@@ -330,7 +332,7 @@ void TangoData::UpdateXYZijData() {
   // Tango Service. It will pass out the closest pose according to
   // the timestamp passed in.
   TangoCoordinateFramePair pairs;
-  pairs.base = TANGO_COORDINATE_FRAME_START_OF_SERVICE;
+  pairs.base = TANGO_COORDINATE_FRAME_PREVIOUS_DEVICE_POSE;
   pairs.target = TANGO_COORDINATE_FRAME_DEVICE;
   TangoPoseData pose;
   if (TangoService_getPoseAtTime(prev_depth_timestamp, pairs, &pose) !=
@@ -375,13 +377,18 @@ glm::mat4 TangoData::GetOC2OWMat(bool is_depth_pose) {
 
 bool TangoData::start_scan(std::string name) {
 	LOGI("Starting scan %s", name.c_str());
+
+	// Create Scan directory
+	TangoCameraIntrinsics intr;
+	TangoService_getCameraIntrinsics(TANGO_CAMERA_COLOR, &intr);
 	// Launch the work threads (They will block on the SCAN CV)
-	rgb_recorder.start_record(name);
-	fisheye_recorder.start_record(name);
+	rgb_recorder.start_record(name, (void*)&intr);
+	TangoService_getCameraIntrinsics(TANGO_CAMERA_FISHEYE, &intr);
+	fisheye_recorder.start_record(name,(void*)&intr);
 
-	pose_recorder.start_record(name);
+	pose_recorder.start_record(name, nullptr);
 
-	xyzij_recorder.start_record(name);
+	xyzij_recorder.start_record(name, nullptr);
 
 	return true;
 }

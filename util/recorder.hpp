@@ -17,7 +17,7 @@ template <class T> class recorder{
 public:
 	recorder();
 	~recorder();
-	int start_record(std::string record_name);
+	int start_record(std::string record_name, void * param);
 	int stop_record();
 	int set_record_path(std::string record_path);
 	int set_recorder_name(std::string recorder_name);
@@ -33,8 +33,8 @@ private:
 	pthread_cond_t data_cv;
 
 	static void* dummy(void*);
-	void* record_thread(void*);
-
+	void *record_thread(void*);
+	void *param;
 	std::string recorder_name;
 	std::string record_path;
 	std::string record_name;
@@ -68,14 +68,13 @@ template <class T> int recorder<T>::enqueue_record(T* data){
 }
 
 template <class T> T* recorder<T>::dequeue_record(bool wait){
-	T * data;
+	T * data = nullptr;
 	pthread_mutex_lock(&data_mutex);
 	if(data_queue.empty() && wait){
 		pthread_cond_wait(&data_cv, &data_mutex);
 	} 
 	if(data_queue.empty()){
 		LOGI("No elements in Queue to remove");
-		return nullptr;
 	}
 	
 	data = data_queue.front();
@@ -108,23 +107,27 @@ template <class T> int recorder<T>::set_recorder_name(std::string recorder_name)
 	this->recorder_name = recorder_name;
 }
 
-template <class T> int recorder<T>::start_record(std::string record_name){
+template <class T> int recorder<T>::start_record(std::string record_name, void * param){
 	LOGI("Starting scan %s", record_name.c_str());
 	this->record_name = record_name;
-	state_active = true;
+	T::write_to_initialization(record_path, recorder_name, record_name, param);
+
 	pthread_create(&thread_handle, nullptr, dummy, (void*)this);
 }
 
 
-template <class T> void * recorder<T>::record_thread(void *){
+template <class T> void * recorder<T>::record_thread(void * ){
 	T * data;
+	state_active = true;
 	LOGI("%s Recording thread Started", recorder_name.c_str());
 	while(true){
 		if(data = dequeue_record(state_active)){
 			// Read the front of the Queue
 			data = dequeue_record(state_active);
-			data->write_to_file(record_path, recorder_name, record_name);
-			delete data;
+			if(data != nullptr){
+			  data->write_to_file(record_path, recorder_name, record_name);
+			  delete data;
+			}
 		} else if(!state_active){
 			break;
 		}

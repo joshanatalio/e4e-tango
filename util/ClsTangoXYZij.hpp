@@ -31,6 +31,9 @@ public:
 		xyz = nullptr;
 		ij = nullptr;
 	}
+	static int write_to_initialization(std::string path, std::string id, std::string name, void * param){
+
+	}
 
 	int write_to_file(std::string path, std::string id, std::string name){
 		pcl::PointCloud<pcl::PointXYZ> output;

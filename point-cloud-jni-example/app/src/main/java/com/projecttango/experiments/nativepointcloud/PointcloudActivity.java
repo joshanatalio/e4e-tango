@@ -183,16 +183,27 @@ public class PointcloudActivity extends Activity implements OnClickListener {
 
           // Set External Storage Directories (these must be set BEFORE calling connect callbacks)
           // TODO: Double check that the SD is plugged in, raise an error if not.
-          File file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[1], "");
+          // TODO: Check that scan directory does not exist, if it does, delete the old one and start again.
+          String scanName = "HelloWorld";
+
+          File file;
+          file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[1], scanName+"/RGB");
           file.mkdirs();
-          Log.i("onActivityResult:", file.getAbsolutePath());
           TangoJNINative.setExternalStorageDirectory("TANGO_CAMERA_COLOR", file.getAbsolutePath());
+
+          file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[1], scanName+"/FISH");
+          file.mkdirs();
           TangoJNINative.setExternalStorageDirectory("TANGO_CAMERA_FISHEYE", file.getAbsolutePath());
+
+          file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[1], scanName+"/DEPTH");
+          file.mkdirs();
           TangoJNINative.setExternalStorageDirectory("TANGO_CAMERA_DEPTH", file.getAbsolutePath());
-          //TangoJNINative.setExternalStorageDirectory("TANGO_CAMERA_DEPTH", file.getAbsolutePath())
+
+          file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[1], scanName+"/POSE");
+          file.mkdirs();
           TangoJNINative.setExternalStorageDirectory("TANGO_POSE", file.getAbsolutePath());
 
-          TangoJNINative.startScan("HelloWorld");
+          TangoJNINative.startScan(scanName);
           // Connect Tango callbacks.
           TangoJNINative.connectCallbacks();
 

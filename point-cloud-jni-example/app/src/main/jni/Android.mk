@@ -15,7 +15,7 @@
 #
 LOCAL_PATH:= $(call my-dir)
 PROJECT_ROOT:= $(call my-dir)/../../../../..
-UTIL_ROOT := /home/drichmond/Research/repositories/git/e4e/e4e-tango/util
+UTIL_ROOT := /home/doctor/Research/repositories/git/e4e-tango-dustin/util
 
 include $(CLEAR_VARS)
 OPENCV_CAMERA_MODULES := on
