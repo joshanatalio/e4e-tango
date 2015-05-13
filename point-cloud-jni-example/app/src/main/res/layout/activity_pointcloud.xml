@@ -189,5 +189,44 @@
         android:layout_marginRight="5dp"
         android:paddingRight="5dp"
         android:text="@string/third_person" />
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:layout_toStartOf="@+id/first_person_button"
+        android:weightSum="1"
+        android:layout_below="@+id/third_person_button">
+
+        <EditText
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:hint="Recording Name"
+            android:id="@+id/recordNameBox"
+            android:layout_weight="0.14" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Start"
+            android:id="@+id/startButton" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Stop"
+            android:id="@+id/stopButton" />
+
+        <SeekBar
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/exposureSeekBar"
+            android:layout_weight="0.22" />
+        <SeekBar
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/isoSeekBar"
+            android:layout_weight="0.22" />
+
+    </LinearLayout>
 
 </RelativeLayout>

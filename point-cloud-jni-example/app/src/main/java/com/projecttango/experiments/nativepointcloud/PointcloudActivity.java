@@ -16,6 +16,7 @@
 
 package com.projecttango.experiments.nativepointcloud;
 
+
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
@@ -30,10 +31,13 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.os.Environment;
 import java.io.File;
+import java.io.*;
 /**
  * Main activity shows point cloud scene.
  */
@@ -60,6 +64,12 @@ public class PointcloudActivity extends Activity implements OnClickListener {
   private float mTouchCurrentDist = 0.0f;
   private Point mScreenSize = new Point();
   private float mScreenDiagonalDist = 0.0f;
+
+  private Button startButton;
+  private Button stopButton;
+  private SeekBar isoSeekBar;
+  private SeekBar exposureSeekBar;
+  private EditText recordNameBox;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -92,6 +102,8 @@ public class PointcloudActivity extends Activity implements OnClickListener {
     // Text views for displaying translation and rotation data.
     mPoseDataTextView = (TextView) findViewById(R.id.pose_data_textview);
 
+
+
     // Text views for application versions.
     mAppVersion = (TextView) findViewById(R.id.appversion);
     PackageInfo pInfo;
@@ -106,6 +118,51 @@ public class PointcloudActivity extends Activity implements OnClickListener {
     findViewById(R.id.first_person_button).setOnClickListener(this);
     findViewById(R.id.third_person_button).setOnClickListener(this);
     findViewById(R.id.top_down_button).setOnClickListener(this);
+    exposureSeekBar = (SeekBar) findViewById(R.id.exposureSeekBar);
+    isoSeekBar = (SeekBar) findViewById(R.id.isoSeekBar);
+    startButton = (Button) findViewById(R.id.startButton);
+    startButton.setOnClickListener(this);
+    stopButton = (Button) findViewById(R.id.stopButton);
+    stopButton.setOnClickListener(this);
+
+    recordNameBox = (EditText)findViewById(R.id.recordNameBox);
+
+
+    exposureSeekBar.setMax(30);
+    exposureSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+      @Override
+      public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
+
+      }
+
+      @Override
+      public void onStartTrackingTouch(SeekBar seekBar) {
+
+      }
+
+      @Override
+      public void onStopTrackingTouch(SeekBar seekBar) {
+
+      }
+    });
+
+    isoSeekBar.setMax(3);
+    isoSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+      @Override
+      public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
+
+      }
+
+      @Override
+      public void onStartTrackingTouch(SeekBar seekBar) {
+
+      }
+
+      @Override
+      public void onStopTrackingTouch(SeekBar seekBar) {
+
+      }
+    });
 
     // OpenGL view where all of the graphics are drawn.
     mGLView = (GLSurfaceView) findViewById(R.id.gl_surface_view);
@@ -154,6 +211,23 @@ public class PointcloudActivity extends Activity implements OnClickListener {
     case R.id.top_down_button:
       TangoJNINative.setCamera(2);
       break;
+    case R.id.startButton:
+      System.out.println("Josh: Start recording.");
+      String name = recordNameBox.getText().toString();
+      name  = name.trim();
+      if(name.isEmpty()) {
+        Toast.makeText(this, "Cannot have a blank scan name!", Toast.LENGTH_SHORT).show();
+        System.out.println("Josh: blank scan name");
+      }
+      else {
+        beginScan(name);
+      }
+
+      break;
+    case R.id.stopButton:
+      System.out.println("Josh: Stop recording.");TangoJNINative.stopScan();
+      startButton.setEnabled(true);
+      break;
     default:
       return;
     }
@@ -182,28 +256,8 @@ public class PointcloudActivity extends Activity implements OnClickListener {
           }
 
           // Set External Storage Directories (these must be set BEFORE calling connect callbacks)
-          // TODO: Double check that the SD is plugged in, raise an error if not.
-          // TODO: Check that scan directory does not exist, if it does, delete the old one and start again.
-          String scanName = "HelloWorld";
 
-          File file;
-          file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[1], scanName+"/RGB");
-          file.mkdirs();
-          TangoJNINative.setExternalStorageDirectory("TANGO_CAMERA_COLOR", file.getAbsolutePath());
 
-          file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[1], scanName+"/FISH");
-          file.mkdirs();
-          TangoJNINative.setExternalStorageDirectory("TANGO_CAMERA_FISHEYE", file.getAbsolutePath());
-
-          file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[1], scanName+"/DEPTH");
-          file.mkdirs();
-          TangoJNINative.setExternalStorageDirectory("TANGO_CAMERA_DEPTH", file.getAbsolutePath());
-
-          file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[1], scanName+"/POSE");
-          file.mkdirs();
-          TangoJNINative.setExternalStorageDirectory("TANGO_POSE", file.getAbsolutePath());
-
-          TangoJNINative.startScan(scanName);
           // Connect Tango callbacks.
           TangoJNINative.connectCallbacks();
 
@@ -223,6 +277,87 @@ public class PointcloudActivity extends Activity implements OnClickListener {
           mIsPermissionIntentCalled = true;
         }
     }
+  }
+
+  private void beginScan(String scanName) {
+    // TODO: Double check that the SD is plugged in, raise an error if not.
+    // TODO: Check that scan directory does not exist, if it does, delete the old one and start again.
+
+    File path  = Environment.getExternalStorageDirectory();
+    String pathString = path.getPath();
+
+    Boolean isSDPresent = android.os.Environment.getExternalStorageState().equals(android.os.Environment.MEDIA_MOUNTED);
+   ;
+//    if(Environment.isExternalStorageRemovable(pathString)){
+//      Toast.makeText(this, "There is an SD Card inserted!", Toast.LENGTH_SHORT).show();
+//      System.out.println("Josh: There was SD Card");
+//      return;
+//    }
+//  else{
+//      Toast.makeText(this, "There is no SD Card inserted!", Toast.LENGTH_SHORT).show();
+//
+//      System.out.println("Josh: There was no SD Card");
+//
+//    }
+//
+//
+//    try {
+//      // Open the file
+//      FileInputStream fs = new FileInputStream("/proc/mounts");
+//
+//      DataInputStream in = new DataInputStream(fs);
+//      BufferedReader br = new BufferedReader(new InputStreamReader(in));
+//
+//      String strLine;
+//      StringBuilder sb = new StringBuilder();
+//
+//      //Read File Line By Line
+//      while ((strLine = br.readLine()) != null)   {
+//        // Remember each line
+//        sb.append(strLine);
+//      }
+//
+//      //Close the stream
+//      in.close();
+//
+//      if(sb.toString().contains("external_sd")){
+//
+//        Toast.makeText(this, "There is an SD Card inserted!", Toast.LENGTH_SHORT).show();
+//      System.out.println("Josh: There was SD Card");
+//      return;
+//    }
+//  else{
+//      Toast.makeText(this, "There is no SD Card inserted!", Toast.LENGTH_SHORT).show();
+//
+//      System.out.println("Josh: There was no SD Card");
+//
+//    }
+//    } catch (Exception e) {
+//      //Catch exception if any
+//      e.printStackTrace();
+//    }
+
+
+    File file;
+    file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[1], scanName+"/RGB");
+    file.mkdirs();
+    TangoJNINative.setExternalStorageDirectory("TANGO_CAMERA_COLOR", file.getAbsolutePath());
+
+    file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[1], scanName+"/FISH");
+    file.mkdirs();
+    TangoJNINative.setExternalStorageDirectory("TANGO_CAMERA_FISHEYE", file.getAbsolutePath());
+
+    file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[1], scanName+"/DEPTH");
+    file.mkdirs();
+    TangoJNINative.setExternalStorageDirectory("TANGO_CAMERA_DEPTH", file.getAbsolutePath());
+
+    file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[1], scanName+"/POSE");
+    file.mkdirs();
+    TangoJNINative.setExternalStorageDirectory("TANGO_POSE", file.getAbsolutePath());
+
+    TangoJNINative.startScan(scanName);
+    startButton.setEnabled(false);
+
   }
 
   @Override

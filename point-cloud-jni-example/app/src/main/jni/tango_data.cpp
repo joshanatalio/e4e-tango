@@ -15,7 +15,6 @@
 */
 
 #include "tango_data.h"
-#include <malloc.h>
 
 static float prev_depth_timestamp = 0.0f;
 
@@ -71,9 +70,10 @@ static void onXYZijAvailable(void*, const TangoXYZij* XYZ_ij) {
   TangoData::GetInstance().is_xyzij_dirty = true;
 
   pthread_mutex_unlock(&TangoData::GetInstance().xyzij_mutex);
-
+  if(TangoData::GetInstance().scan_active){
   ClsTangoXYZij * data = new ClsTangoXYZij(XYZ_ij);
   TangoData::GetInstance().xyzij_recorder.enqueue_record(data);
+  }
 }
 
 // Tango event callback.
@@ -94,8 +94,10 @@ static void onPoseAvailable(void*, const TangoPoseData* pose) {
 		}
 		pthread_mutex_unlock(&TangoData::GetInstance().pose_mutex);
 	} else if (pose->frame.base == TANGO_COORDINATE_FRAME_PREVIOUS_DEVICE_POSE) {
+	  if(TangoData::GetInstance().scan_active){
 		ClsTangoPoseData * data = new ClsTangoPoseData(pose);
 		TangoData::GetInstance().pose_recorder.enqueue_record(data);
+		}
 	}
 }
 
@@ -110,6 +112,7 @@ TangoErrorType TangoData::Initialize(JNIEnv* env, jobject activity) {
 TangoData::TangoData() : config_(nullptr) {
   is_xyzij_dirty = false;
   is_pose_dirty = false;
+  scan_active = false;
   rgb_recorder.set_recorder_name(std::string("RGB"));
   fisheye_recorder.set_recorder_name(std::string("FISHEYE"));
   
@@ -177,21 +180,25 @@ static void onRGBFrameAvailable(void* context, TangoCameraId id, const TangoImag
   if(!buffer || !buffer->data){
     return;
   }
-  LOGI("onFISHEYEFrameAvailable called. Got %d by %d image (%d pixels/line) with format %x", buffer->height, buffer->width, buffer->stride, buffer->format);
+  //LOGI("onFISHEYEFrameAvailable called. Got %d by %d image (%d pixels/line) with format %x", buffer->height, buffer->width, buffer->stride, buffer->format);
 
-  ClsTangoImageBuffer * data = new ClsTangoImageBuffer(buffer,YUV_NV21);
-  TangoData::GetInstance().rgb_recorder.enqueue_record(data);
+  if(TangoData::GetInstance().scan_active){
+    ClsTangoImageBuffer * data = new ClsTangoImageBuffer(buffer,YUV_NV21);
+    TangoData::GetInstance().rgb_recorder.enqueue_record(data);
+  }
 }
 
 static void onFISHEYEFrameAvailable(void* context, TangoCameraId id, const TangoImageBuffer* buffer) {
   if(buffer == nullptr || buffer->data == nullptr){
     return;
   }
-  LOGI("onFISHEYEFrameAvailable called. Got %d by %d image (%d pixels/line) with format %x",
-  buffer->height, buffer->width, buffer->stride, buffer->format);
+  //LOGI("onFISHEYEFrameAvailable called. Got %d by %d image (%d pixels/line) with format %x",
+  //buffer->height, buffer->width, buffer->stride, buffer->format);
 
+  if(TangoData::GetInstance().scan_active){
   ClsTangoImageBuffer * data = new ClsTangoImageBuffer(buffer,YUV_NV21);
   TangoData::GetInstance().fisheye_recorder.enqueue_record(data);
+  }
 }
 
 bool TangoData::ConnectCallbacks() {
@@ -332,7 +339,7 @@ void TangoData::UpdateXYZijData() {
   // Tango Service. It will pass out the closest pose according to
   // the timestamp passed in.
   TangoCoordinateFramePair pairs;
-  pairs.base = TANGO_COORDINATE_FRAME_PREVIOUS_DEVICE_POSE;
+  pairs.base = TANGO_COORDINATE_FRAME_START_OF_SERVICE;
   pairs.target = TANGO_COORDINATE_FRAME_DEVICE;
   TangoPoseData pose;
   if (TangoService_getPoseAtTime(prev_depth_timestamp, pairs, &pose) !=
@@ -384,6 +391,7 @@ bool TangoData::start_scan(std::string name) {
 	// Launch the work threads (They will block on the SCAN CV)
 	rgb_recorder.start_record(name, (void*)&intr);
 	TangoService_getCameraIntrinsics(TANGO_CAMERA_FISHEYE, &intr);
+	scan_active = true;
 	fisheye_recorder.start_record(name,(void*)&intr);
 
 	pose_recorder.start_record(name, nullptr);
@@ -395,7 +403,13 @@ bool TangoData::start_scan(std::string name) {
 
 bool TangoData::stop_scan() {
 	LOGI("Stopping currently active scan");
-	//rgb_recorder.stop_record();
+  scan_active = false;
+	rgb_recorder.stop_record();
+	fisheye_recorder.stop_record();
+
+    pose_recorder.stop_record();
+    xyzij_recorder.stop_record();
+
 	return true;
 }
 

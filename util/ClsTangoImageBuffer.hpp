@@ -115,7 +115,7 @@ public:
 		std::string filename = path + std::string("/");
 		filename += id + std::string("_")+name + std::string("_") + 
 			to_str(timestamp) + std::string(".jpeg");
-		LOGI("Writing to file %s", filename.c_str());
+		//LOGI("Writing to file %s", filename.c_str());
 
 		cv::imwrite(filename.c_str(), imageBGR);
 		//imageSRC.release();

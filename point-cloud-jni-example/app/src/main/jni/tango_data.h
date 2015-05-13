@@ -101,7 +101,7 @@ class TangoData {
   recorder<ClsTangoImageBuffer> fisheye_recorder;
   recorder<ClsTangoPoseData> pose_recorder;
   recorder<ClsTangoXYZij> xyzij_recorder;
-
+bool scan_active;
   bool start_scan(std::string);
   bool stop_scan();
   bool setExternalStorageDirectory(std::string id, std::string path);
