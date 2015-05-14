@@ -76,6 +76,8 @@ template <class T> T* recorder<T>::dequeue_record(bool wait){
 	if(data_queue.empty()){
 		LOGI("No elements in Queue to remove");
 	}
+
+	LOGI("Elements remaining in %s queue: %d", recorder_name.c_str(), data_queue.size());
 	
 	data = data_queue.front();
 	if(data == nullptr) {
@@ -123,7 +125,7 @@ template <class T> void * recorder<T>::record_thread(void * ){
 	while(true){
 		if(data = dequeue_record(state_active)){
 			// Read the front of the Queue
-			data = dequeue_record(state_active);
+			//data = dequeue_record(state_active);
 			if(data != nullptr){
 			  data->write_to_file(record_path, recorder_name, record_name);
 			  delete data;

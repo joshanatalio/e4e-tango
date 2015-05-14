@@ -339,19 +339,19 @@ public class PointcloudActivity extends Activity implements OnClickListener {
 
 
     File file;
-    file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[1], scanName+"/RGB");
+    file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[0], scanName+"/RGB");
     file.mkdirs();
     TangoJNINative.setExternalStorageDirectory("TANGO_CAMERA_COLOR", file.getAbsolutePath());
 
-    file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[1], scanName+"/FISH");
+    file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[0], scanName+"/FISH");
     file.mkdirs();
     TangoJNINative.setExternalStorageDirectory("TANGO_CAMERA_FISHEYE", file.getAbsolutePath());
 
-    file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[1], scanName+"/DEPTH");
+    file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[0], scanName+"/DEPTH");
     file.mkdirs();
     TangoJNINative.setExternalStorageDirectory("TANGO_CAMERA_DEPTH", file.getAbsolutePath());
 
-    file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[1], scanName+"/POSE");
+    file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[0], scanName+"/POSE");
     file.mkdirs();
     TangoJNINative.setExternalStorageDirectory("TANGO_POSE", file.getAbsolutePath());
 

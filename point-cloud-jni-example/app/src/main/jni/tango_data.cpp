@@ -389,7 +389,7 @@ bool TangoData::start_scan(std::string name) {
 	TangoCameraIntrinsics intr;
 	TangoService_getCameraIntrinsics(TANGO_CAMERA_COLOR, &intr);
 	// Launch the work threads (They will block on the SCAN CV)
-	rgb_recorder.start_record(name, (void*)&intr);
+	//rgb_recorder.start_record(name, (void*)&intr);
 	TangoService_getCameraIntrinsics(TANGO_CAMERA_FISHEYE, &intr);
 	scan_active = true;
 	fisheye_recorder.start_record(name,(void*)&intr);

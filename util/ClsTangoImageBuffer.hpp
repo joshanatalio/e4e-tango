@@ -111,15 +111,20 @@ public:
 		cv::Mat imageSRC(cv_height, cv_width, cv_fmt, data);
 		cv::Mat imageBGR(height, width, CV_8UC3, 0);
 		cv::cvtColor(imageSRC, imageBGR, cv_conv);
+		std::vector<uchar> bufOut;
 
 		std::string filename = path + std::string("/");
 		filename += id + std::string("_")+name + std::string("_") + 
-			to_str(timestamp) + std::string(".jpeg");
+			to_str(timestamp) + std::string(".bmp");
 		//LOGI("Writing to file %s", filename.c_str());
 
-		cv::imwrite(filename.c_str(), imageBGR);
-		//imageSRC.release();
-		//imageBGR.release();
+		//cv::imwrite(filename.c_str(), imageBGR);
+		    std::vector<int> compression_params;
+            compression_params.push_back(CV_IMWRITE_JPEG_QUALITY);
+            compression_params.push_back(10);
+		//cv::imencode(".jpg",imageBGR,bufOut,compression_params);
+		imageSRC.release();
+		imageBGR.release();
 		//TODO: Error Code
 		return 0;
 	}
