@@ -38,6 +38,8 @@ import android.widget.Toast;
 import android.os.Environment;
 import java.io.File;
 import java.io.*;
+
+
 /**
  * Main activity shows point cloud scene.
  */
@@ -128,10 +130,12 @@ public class PointcloudActivity extends Activity implements OnClickListener {
     recordNameBox = (EditText)findViewById(R.id.recordNameBox);
 
 
-    exposureSeekBar.setMax(30);
+    exposureSeekBar.setMax(14);
     exposureSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
       @Override
       public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
+          int newVal = (i+1) * 2000000;
+          TangoJNINative.setExposure(newVal);
 
       }
 

@@ -103,6 +103,7 @@ class TangoData {
   recorder<ClsTangoXYZij> xyzij_recorder;
 bool scan_active;
   bool start_scan(std::string);
+  bool setExposure(int exposure);
   bool stop_scan();
   bool setExternalStorageDirectory(std::string id, std::string path);
  private:

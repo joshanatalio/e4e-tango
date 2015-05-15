@@ -5,12 +5,16 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <turbojpeg.h>
 
 typedef enum e_format{
 	RGBA=0,
 	YUV_NV21,
 	GRAY
 }format_t;
+
+static bool initialized;
+static tjhandle jpegCompressor;
 class ClsTangoImageBuffer:public TangoImageBuffer{
 	std::string to_str(double timestamp){
 		std::ostringstream stm ;
@@ -22,7 +26,7 @@ public:
 	ClsTangoImageBuffer(const TangoImageBuffer* data, format_t format){
 		int bufsize;
 		fmt=format;
-		width = data->stride;
+		width = data->width;
 		height = data->height;
 		if(fmt == RGBA){
 			bufsize = width*height*4;
@@ -38,6 +42,11 @@ public:
 		this->format = data->format;
 		this->data = new uint8_t[bufsize];
 		memcpy(this->data, data->data, bufsize);
+		if(!initialized){
+			initialized = true;
+			jpegCompressor = tjInitCompress();
+		}
+
 	}
 		
 	~ClsTangoImageBuffer(){
@@ -111,24 +120,35 @@ public:
 		cv::Mat imageSRC(cv_height, cv_width, cv_fmt, data);
 		cv::Mat imageBGR(height, width, CV_8UC3, 0);
 		cv::cvtColor(imageSRC, imageBGR, cv_conv);
-		std::vector<uchar> bufOut;
+		//std::vector<uchar> bufOut;
 
 		std::string filename = path + std::string("/");
-		filename += id + std::string("_")+name + std::string("_") + 
-			to_str(timestamp) + std::string(".bmp");
+		filename += id + std::string("_")+name + std::string("_") +
+			to_str(timestamp) + std::string(".jpg");
 		//LOGI("Writing to file %s", filename.c_str());
+        unsigned char *compressed_image = NULL;
+        long unsigned int jpeg_size = 0;
 
+        //int err = tjCompressFromYUV(jpegCompressor, data, stride, 1, (height*3)/2, TJSAMP_420, &compressed_image,
+        //		&jpeg_size, 90, TJFLAG_FASTDCT);
+        //int err = tjCompress2(jpegCompressor, imageBGR.data, stride, 0, height, TJPF_BGR, &compressed_image,
+        //		&jpeg_size,TJSAMP_444 , 90, 0);
+        //LOGI("JPEG Size %d. Error: %d %s", jpeg_size,err, tjGetErrorStr());
+        //#ifdef JCS_EXTENSIONS
+        //LOGI("JCS Extensions enabled");
+        //#endif
+        std::ofstream myfile (filename.c_str(),std::ofstream::binary);
+        myfile.write((const char *)compressed_image, jpeg_size);
+        myfile.close();
 		//cv::imwrite(filename.c_str(), imageBGR);
-		    std::vector<int> compression_params;
-            compression_params.push_back(CV_IMWRITE_JPEG_QUALITY);
-            compression_params.push_back(10);
 		//cv::imencode(".jpg",imageBGR,bufOut,compression_params);
-		imageSRC.release();
-		imageBGR.release();
+		//imageSRC.release();
+		//imageBGR.release();
+		tjFree(compressed_image);
 		//TODO: Error Code
 		return 0;
 	}
-private:
+
 	
 };
 #endif

@@ -321,6 +321,16 @@ Java_com_projecttango_experiments_nativepointcloud_TangoJNINative_startScan(
 }
 
 JNIEXPORT void JNICALL
+Java_com_projecttango_experiments_nativepointcloud_TangoJNINative_setExposure(
+    JNIEnv* env, jobject, jint exposure) {
+    int nativeInt = exposure;
+
+    if (!TangoData::GetInstance().setExposure(exposure)) {
+      LOGE("Tango setExposure failed");
+    }
+}
+
+JNIEXPORT void JNICALL
 Java_com_projecttango_experiments_nativepointcloud_TangoJNINative_stopScan(
     JNIEnv* env, jobject) {
     if (!TangoData::GetInstance().stop_scan()) {

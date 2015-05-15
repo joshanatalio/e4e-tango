@@ -162,6 +162,7 @@
  /home/doctor/OpenCV-android-sdk//sdk/native/jni/include/opencv2/core/core_c.h \
  /home/doctor/OpenCV-android-sdk//sdk/native/jni/include/opencv2/highgui/highgui.hpp \
  /home/doctor/OpenCV-android-sdk//sdk/native/jni/include/opencv2/highgui/highgui_c.h \
+ /home/doctor/Research/repositories/sourceforge/libjpeg-turbo-1.4.0/turbojpeg.h \
  /home/doctor/Research/repositories/git/e4e-tango-dustin/util/ClsTangoPoseData.hpp \
  /home/doctor/Research/repositories/git/e4e-tango-dustin/util/ClsTangoXYZij.hpp \
  /home/doctor/Research/repositories/git/pcl-superbuild/CMakeExternals/Install/pcl-android//include/pcl-1.6/pcl/io/ply_io.h \
@@ -1160,6 +1161,8 @@
 /home/doctor/OpenCV-android-sdk//sdk/native/jni/include/opencv2/highgui/highgui.hpp:
 
 /home/doctor/OpenCV-android-sdk//sdk/native/jni/include/opencv2/highgui/highgui_c.h:
+
+/home/doctor/Research/repositories/sourceforge/libjpeg-turbo-1.4.0/turbojpeg.h:
 
 /home/doctor/Research/repositories/git/e4e-tango-dustin/util/ClsTangoPoseData.hpp:
 

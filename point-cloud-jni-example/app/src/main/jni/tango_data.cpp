@@ -401,6 +401,18 @@ bool TangoData::start_scan(std::string name) {
 	return true;
 }
 
+bool TangoData::setExposure(int exposure) {
+
+	if(exposure < 0 || exposure > 30000000){
+	 return (TangoConfig_setBool(config_, "config_color_mode_auto", true) != TANGO_SUCCESS);
+	} else {
+	 TangoConfig_setBool(config_, "config_color_mode_auto", false);
+     TangoConfig_setInt32(config_, "config_color_exp", exposure);
+     LOGI("Se exposure to %d", exposure);
+	}
+	return true;
+}
+
 bool TangoData::stop_scan() {
 	LOGI("Stopping currently active scan");
   scan_active = false;
