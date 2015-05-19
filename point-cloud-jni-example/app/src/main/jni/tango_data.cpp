@@ -183,8 +183,8 @@ static void onRGBFrameAvailable(void* context, TangoCameraId id, const TangoImag
   //LOGI("onFISHEYEFrameAvailable called. Got %d by %d image (%d pixels/line) with format %x", buffer->height, buffer->width, buffer->stride, buffer->format);
 
   if(TangoData::GetInstance().scan_active){
-    ClsTangoImageBuffer * data = new ClsTangoImageBuffer(buffer,YUV_NV21);
-    TangoData::GetInstance().rgb_recorder.enqueue_record(data);
+    //ClsTangoImageBuffer * data = new ClsTangoImageBuffer(buffer,YUV_NV21);
+    //TangoData::GetInstance().rgb_recorder.enqueue_record(data);
   }
 }
 
@@ -401,17 +401,32 @@ bool TangoData::start_scan(std::string name) {
 	return true;
 }
 
-bool TangoData::setExposure(int exposure) {
+bool TangoData::setISO(int iso) {
 
-	if(exposure < 0 || exposure > 30000000){
-	 return (TangoConfig_setBool(config_, "config_color_mode_auto", true) != TANGO_SUCCESS);
+	if(iso < 100 || iso > 800){
+	 TangoConfig_setBool(config_, "config_color_mode_auto", false);
+     TangoConfig_setInt32(config_, "config_color_iso", 100);
 	} else {
 	 TangoConfig_setBool(config_, "config_color_mode_auto", false);
-     TangoConfig_setInt32(config_, "config_color_exp", exposure);
-     LOGI("Se exposure to %d", exposure);
+     TangoConfig_setInt32(config_, "config_color_iso", iso);
+     LOGI("Set iso to %d", iso);
 	}
 	return true;
 }
+
+bool TangoData::setExposure(int exposure) {
+
+	if(exposure < 0 || exposure > 30000000){
+	 	 TangoConfig_setBool(config_, "config_color_mode_auto", false);
+         TangoConfig_setInt32(config_, "config_color_exp", 11100000);
+	} else {
+	 TangoConfig_setBool(config_, "config_color_mode_auto", false);
+     TangoConfig_setInt32(config_, "config_color_exp", exposure);
+     LOGI("Set exposure to %d", exposure);
+	}
+	return true;
+}
+
 
 bool TangoData::stop_scan() {
 	LOGI("Stopping currently active scan");

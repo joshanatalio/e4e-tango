@@ -72,6 +72,8 @@ public class PointcloudActivity extends Activity implements OnClickListener {
   private SeekBar isoSeekBar;
   private SeekBar exposureSeekBar;
   private EditText recordNameBox;
+  private TextView exposureTextView;
+  private TextView isoTextView;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -104,6 +106,8 @@ public class PointcloudActivity extends Activity implements OnClickListener {
     // Text views for displaying translation and rotation data.
     mPoseDataTextView = (TextView) findViewById(R.id.pose_data_textview);
 
+    exposureTextView = (TextView) findViewById(R.id.exposureTextView);
+    isoTextView = (TextView) findViewById(R.id.isoTextView);
 
 
     // Text views for application versions.
@@ -136,7 +140,7 @@ public class PointcloudActivity extends Activity implements OnClickListener {
       public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
           int newVal = (i+1) * 2000000;
           TangoJNINative.setExposure(newVal);
-
+          exposureTextView.setText("Exposure: " + (newVal/1000000) + "ms");
       }
 
       @Override
@@ -154,6 +158,21 @@ public class PointcloudActivity extends Activity implements OnClickListener {
     isoSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
       @Override
       public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
+        int newISO = 100;
+        switch (i){
+          case 3:
+            newISO = 800;
+            break;
+          case 2:
+            newISO = 400;
+            break;
+          case 1:
+            newISO = 200;
+          default:
+            break;
+        }
+        TangoJNINative.setISO(newISO);
+        isoTextView.setText("ISO: " + newISO);
 
       }
 

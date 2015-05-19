@@ -331,6 +331,17 @@ Java_com_projecttango_experiments_nativepointcloud_TangoJNINative_setExposure(
 }
 
 JNIEXPORT void JNICALL
+Java_com_projecttango_experiments_nativepointcloud_TangoJNINative_setISO(
+    JNIEnv* env, jobject, jint iso) {
+    int nativeInt = iso;
+
+    if (!TangoData::GetInstance().setISO(iso)) {
+      LOGE("Tango setISO failed");
+    }
+}
+
+
+JNIEXPORT void JNICALL
 Java_com_projecttango_experiments_nativepointcloud_TangoJNINative_stopScan(
     JNIEnv* env, jobject) {
     if (!TangoData::GetInstance().stop_scan()) {

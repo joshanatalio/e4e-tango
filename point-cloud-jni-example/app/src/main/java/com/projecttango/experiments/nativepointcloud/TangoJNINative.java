@@ -38,6 +38,8 @@ public class TangoJNINative {
 
   public static native void setExposure(int exposure);
 
+  public static native void setISO(int iso);
+
   public static native void stopScan();
 
   public static native int connect();
