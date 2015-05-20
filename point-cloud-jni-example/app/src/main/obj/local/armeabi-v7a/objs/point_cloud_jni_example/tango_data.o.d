@@ -148,6 +148,7 @@
  /home/theodor/Android/NVPACK/android-ndk-r10d/sources/cxx-stl/gnu-libstdc++/4.8/include/queue \
  /home/theodor/Android/NVPACK/android-ndk-r10d/sources/cxx-stl/gnu-libstdc++/4.8/include/iostream \
  /home/theodor/Android/NVPACK/android-ndk-r10d/sources/cxx-stl/gnu-libstdc++/4.8/include/fstream \
+ /home/theodor/Android/NVPACK/android-ndk-r10d/platforms/android-19/arch-arm/usr/include/semaphore.h \
  /home/theodor/Research/repositories/git/e4e-tango/util//ClsTangoImageBuffer.hpp \
  /home/theodor/Android/NVPACK/OpenCV-2.4.8.2-Tegra-sdk//sdk/native/jni/include/opencv2/core/core.hpp \
  /home/theodor/Android/NVPACK/OpenCV-2.4.8.2-Tegra-sdk//sdk/native/jni/include/opencv2/core/types_c.h \
@@ -1132,6 +1133,8 @@
 /home/theodor/Android/NVPACK/android-ndk-r10d/sources/cxx-stl/gnu-libstdc++/4.8/include/iostream:
 
 /home/theodor/Android/NVPACK/android-ndk-r10d/sources/cxx-stl/gnu-libstdc++/4.8/include/fstream:
+
+/home/theodor/Android/NVPACK/android-ndk-r10d/platforms/android-19/arch-arm/usr/include/semaphore.h:
 
 /home/theodor/Research/repositories/git/e4e-tango/util//ClsTangoImageBuffer.hpp:
 

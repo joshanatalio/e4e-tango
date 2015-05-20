@@ -26,18 +26,18 @@ public:
 		fmt=format;
 		width = data->width;
 		height = data->height;
-		if(fmt == RGBA){
-			bufsize = width*height*4;
-		} else if(fmt == YUV_NV21){
-			bufsize = width * ((height*3)/2);
-		} else if(fmt == GRAY){
-			bufsize = width * height;
-		}
-
 		stride = data->stride;
 		timestamp = data->timestamp;
 		frame_number = data->frame_number;
 		this->format = data->format;
+
+		if(fmt == RGBA){
+			bufsize = stride*height*4;
+		} else if(fmt == YUV_NV21){
+			bufsize = stride * ((height*3)/2);
+		} else if(fmt == GRAY){
+			bufsize = stride * height;
+		}
 		this->data = new uint8_t[bufsize];
 		memcpy(this->data, data->data, bufsize);
 	}
@@ -83,39 +83,41 @@ public:
 		
 		if(fmt == RGBA){
 			cv_height = height;
-			cv_width = width;
+			cv_width = stride;
 			cv_fmt = CV_8UC4;
 			cv_conv = CV_RGB2GRAY;
 		} else if(fmt == YUV_NV21){
 			cv_height = (height*3)/2;
-			cv_width = width;
+			cv_width = stride;
 			cv_fmt = CV_8UC1;
 			cv_conv = CV_YUV2BGR_NV21;
 		} else {// Default to gray
 			cv_height = height;
-			cv_width = width;
+			cv_width = stride;
 			cv_fmt = CV_8UC1;
 			cv_conv = CV_GRAY2BGR;
 		}
 		// TODO: Convert format from RGBA_8888 to BGRA_8888
 		cv::Mat imageSRC(cv_height, cv_width, cv_fmt, data);
-		cv::Mat imageBGR(height, width, CV_8UC3, 0);
+		cv::Mat imageBGR(height, stride, CV_8UC3, 0);
+
 		cv::cvtColor(imageSRC, imageBGR, cv_conv);
 		std::vector<uchar> bufOut;
         std::vector<int> compression_params;
         compression_params.push_back(CV_IMWRITE_JPEG_QUALITY);
-        compression_params.push_back(50);
+        compression_params.push_back(10);
 
 		std::string filename = path + std::string("/");
 		filename += id + std::string("_")+name + std::string("_") +
 			to_str(timestamp) + std::string(".jpg");
 		//LOGI("Writing to file %s", filename.c_str());
-
-		cv::imwrite(filename.c_str(), imageBGR, compression_params);
-		//cv::imencode(".jpg",imageBGR,bufOut);
+		cv::Rect myROI(0, 0, width-1, height-1);
+		cv::Mat imageBGRCrop(imageBGR, myROI);
+		cv::imwrite(filename.c_str(), imageBGRCrop, compression_params);
 
 		imageSRC.release();
 		imageBGR.release();
+		//imageBGRCrop.release();
 		//TODO: Error Code
 		return 0;
 	}

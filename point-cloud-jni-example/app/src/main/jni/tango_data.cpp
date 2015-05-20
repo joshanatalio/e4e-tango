@@ -404,7 +404,7 @@ bool TangoData::start_scan(std::string name) {
 bool TangoData::setISO(int iso) {
 
 	if(iso < 100 || iso > 800){
-	 TangoConfig_setBool(config_, "config_color_mode_auto", false);
+	 TangoConfig_setBool(config_, "config_color_mode_auto", true);
      TangoConfig_setInt32(config_, "config_color_iso", 100);
 	} else {
 	 TangoConfig_setBool(config_, "config_color_mode_auto", false);
@@ -427,7 +427,7 @@ int TangoData::get_FISHEYE_queue_length(){
 bool TangoData::setExposure(int exposure) {
 
 	if(exposure < 0 || exposure > 30000000){
-	 	 TangoConfig_setBool(config_, "config_color_mode_auto", false);
+	 	 TangoConfig_setBool(config_, "config_color_mode_auto", true);
          TangoConfig_setInt32(config_, "config_color_exp", 11100000);
 	} else {
 	 TangoConfig_setBool(config_, "config_color_mode_auto", false);

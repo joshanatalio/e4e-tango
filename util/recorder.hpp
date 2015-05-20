@@ -11,7 +11,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-
+#include <semaphore.h>
 template <class T> class recorder{
 
 public:
@@ -21,18 +21,21 @@ public:
 	int stop_record();
 	int set_record_path(std::string record_path);
 	int set_recorder_name(std::string recorder_name);
-	int get_queue_length();
 	int enqueue_record(T* data);
-	T * dequeue_record(bool wait);
-
+	T * dequeue_record();
+	int get_queue_length();
 private:
 	int num_threads;
 	bool state_active = false;
+	bool _state_active = false;
 
 	pthread_t *thread_handles;
 	std::queue<T*> data_queue;
 	pthread_mutex_t data_mutex;
 	pthread_cond_t data_cv;
+
+	pthread_rwlock_t queue_lock;
+	sem_t queue_semaphore;
 
 	static void* dummy(void*);
 	void *record_thread(void*);
@@ -44,11 +47,10 @@ private:
 
 template <class T> recorder<T>::recorder(){
 	state_active = false;
-	pthread_mutex_init(&data_mutex, NULL);
-}
-
-template <class T> int recorder<T>::get_queue_length(){
-	return data_queue.size();
+	_state_active = false;
+	thread_handles = nullptr;
+	sem_init(&queue_semaphore, 0, 0);
+	pthread_rwlock_init(&queue_lock, NULL);
 }
 
 template <class T> recorder<T>::~recorder(){
@@ -61,28 +63,35 @@ template <class T> recorder<T>::~recorder(){
 		data_queue.pop();
 	}
 }
+
+template <class T> int recorder<T>::get_queue_length(){
+	return data_queue.size();
+
+}
 template <class T> int recorder<T>::enqueue_record(T* data){
+	int i;
+
 	//LOGI("Enqueueing Record at time %f", data->timestamp);
 	if(!state_active){
 		LOGE("Scan was not active during enqueue. Enqueue failed!");
 		return -1;
 	}
-	pthread_mutex_lock(&data_mutex); 
+
+	pthread_rwlock_wrlock(&queue_lock);
+
 	data_queue.push(data);
-	pthread_cond_signal(&data_cv);
-	pthread_mutex_unlock(&data_mutex);
+	sem_post(&queue_semaphore);
+	pthread_rwlock_unlock(&queue_lock);
 	return 0;
 }
 
-template <class T> T* recorder<T>::dequeue_record(bool wait){
+template <class T> T* recorder<T>::dequeue_record(){
 	T * data = nullptr;
-	pthread_mutex_lock(&data_mutex);
-	if(wait && data_queue.empty()){
-		pthread_cond_wait(&data_cv, &data_mutex);
-	}
-	// If the data queue is empty here, that (probably) means someone is trying to signal us to exit.
+	sem_wait(&queue_semaphore);
+	pthread_rwlock_rdlock(&queue_lock);
 	if(data_queue.empty()){
 		LOGI("No elements in Queue to remove");
+		pthread_rwlock_unlock(&queue_lock);
 		return nullptr;
 	}
 	LOGI("Elements remaining in %s queue: %d", recorder_name.c_str(), data_queue.size());
@@ -91,22 +100,29 @@ template <class T> T* recorder<T>::dequeue_record(bool wait){
 		LOGE("Removed element is null (Queue size is %d)",data_queue.size());
 	}
 	data_queue.pop();
-	pthread_mutex_unlock(&data_mutex);
+	pthread_rwlock_unlock(&queue_lock);
 	return data;
 }
 
 template <class T> int recorder<T>::stop_record(){
-	if(state_active){
-		state_active = false;
-		void * args;
-		for(int i = 0 ; i < num_threads; i++){
-			pthread_join(thread_handles[i],&args);
-			LOGI("Thread %d joined",i);
-		}
-		num_threads = 0;
+	void * args;
+	int i;
+	state_active = false;
+	if(!state_active){
+    	state_active = false;
+    	LOGI("Set State to false!");
+    	for( i = 0 ; i < num_threads; i++ ){
+        	sem_post(&queue_semaphore);
+        }
+    }
+	for( i = 0 ; i < num_threads; i++ ){
+		pthread_join(thread_handles[i],&args);
+		LOGI("Thread %d joined",i);
+	}
+	num_threads = 0;
+	if(thread_handles){
 		delete thread_handles;
-	}else{
-		LOGE("No scans were active!");
+		thread_handles = nullptr;
 	}
 }
 
@@ -122,6 +138,7 @@ template <class T> int recorder<T>::set_recorder_name(std::string recorder_name)
 
 template <class T> int recorder<T>::start_record(std::string record_name, void * param, int num_threads){
 	this->num_threads = num_threads;
+	_state_active = true;
 	state_active = true;
 	LOGI("Starting scan %s", record_name.c_str());
 	this->record_name = record_name;
@@ -137,7 +154,7 @@ template <class T> void * recorder<T>::record_thread(void * ){
 	T * data;
 	LOGI("%s Recording thread Started", recorder_name.c_str());
 	while(true){
-		if(data = dequeue_record(state_active)){
+		if(data = dequeue_record()){
 			data->write_to_file(record_path, recorder_name, record_name);
 			delete data;
 		} else if(!state_active){
