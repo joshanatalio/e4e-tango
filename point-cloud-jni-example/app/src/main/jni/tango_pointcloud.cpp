@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+//TangoData::GetInstance().fisheye_recorder.get_queue_length();
 #define GLM_FORCE_RADIANS
 
 #include <jni.h>
@@ -330,6 +330,7 @@ Java_com_projecttango_experiments_nativepointcloud_TangoJNINative_setExposure(
     }
 }
 
+
 JNIEXPORT void JNICALL
 Java_com_projecttango_experiments_nativepointcloud_TangoJNINative_setISO(
     JNIEnv* env, jobject, jint iso) {
@@ -338,6 +339,13 @@ Java_com_projecttango_experiments_nativepointcloud_TangoJNINative_setISO(
     if (!TangoData::GetInstance().setISO(iso)) {
       LOGE("Tango setISO failed");
     }
+}
+
+JNIEXPORT jint JNICALL
+Java_com_projecttango_experiments_nativepointcloud_TangoJNINative_getFisheyeQueueLength(
+    JNIEnv* env, jobject) {
+
+    return TangoData::GetInstance().get_FISHEYE_queue_length();
 }
 
 

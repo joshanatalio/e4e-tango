@@ -105,6 +105,7 @@ bool scan_active;
   bool start_scan(std::string);
   bool setExposure(int exposure);
   bool setISO(int iso);
+  int get_FISHEYE_queue_length();
   bool stop_scan();
   bool setExternalStorageDirectory(std::string id, std::string path);
  private:

@@ -15,8 +15,6 @@
 #
 LOCAL_PATH:= $(call my-dir)
 PROJECT_ROOT:= $(call my-dir)/../../../../..
-UTIL_ROOT := /home/doctor/Research/repositories/git/e4e-tango-dustin/util
-TURBO_ROOT := /home/doctor/Research/repositories/sourceforge/libjpeg-turbo-1.4.0
 include $(CLEAR_VARS)
 OPENCV_CAMERA_MODULES := on
 OPENCV_INSTALL_MODULES := on
@@ -46,7 +44,7 @@ LOCAL_C_INCLUDES := $(TANGO_ROOT)/tango-gl/include \
                     $(PCL_ROOT)/include/pcl-1.6/ \
                     $(EIGEN_ROOT)/ \
                     $(UTIL_ROOT)/ \
-                    $(TURBO_ROOT)/
+                    $(TURBO_ROOT)/build/arm_neon/installdir/include/
 
 LOCAL_LDLIBS    := -llog -lGLESv2 -L$(SYSROOT)/usr/lib
 # Boost Libraries

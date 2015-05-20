@@ -56,6 +56,7 @@ public class PointcloudActivity extends Activity implements OnClickListener {
   private TextView mVersionTextView;
   private TextView mAverageZTextView;
   private TextView mFrameDeltaTimeTextView;
+  private TextView elapsedTimeTextView;
   private TextView mAppVersion;
 
   private boolean mIsPermissionIntentCalled = false;
@@ -74,6 +75,9 @@ public class PointcloudActivity extends Activity implements OnClickListener {
   private EditText recordNameBox;
   private TextView exposureTextView;
   private TextView isoTextView;
+  private  TextView queueTextView;
+  private long startRecordTime;
+  private boolean isRecoridng;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -106,6 +110,10 @@ public class PointcloudActivity extends Activity implements OnClickListener {
     // Text views for displaying translation and rotation data.
     mPoseDataTextView = (TextView) findViewById(R.id.pose_data_textview);
 
+    elapsedTimeTextView = (TextView) findViewById(R.id.elapsedTimeTextView);
+
+    queueTextView = (TextView) findViewById(R.id.queueSizeTextView);
+
     exposureTextView = (TextView) findViewById(R.id.exposureTextView);
     isoTextView = (TextView) findViewById(R.id.isoTextView);
 
@@ -133,12 +141,20 @@ public class PointcloudActivity extends Activity implements OnClickListener {
 
     recordNameBox = (EditText)findViewById(R.id.recordNameBox);
 
+    isRecoridng = false;
+    exposureSeekBar.setMax(15);
 
-    exposureSeekBar.setMax(14);
     exposureSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
       @Override
       public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
-          int newVal = (i+1) * 2000000;
+          int newVal = (i) * 2000000;
+          if (newVal == 0)
+          {
+            newVal = 11100000;
+            TangoJNINative.setExposure(newVal);
+            exposureTextView.setText("Auto Exposure: " + (newVal/1000000) + "ms");
+            return;
+          }
           TangoJNINative.setExposure(newVal);
           exposureTextView.setText("Exposure: " + (newVal/1000000) + "ms");
       }
@@ -168,7 +184,9 @@ public class PointcloudActivity extends Activity implements OnClickListener {
             break;
           case 1:
             newISO = 200;
+            break;
           default:
+            newISO = 100;
             break;
         }
         TangoJNINative.setISO(newISO);
@@ -243,12 +261,17 @@ public class PointcloudActivity extends Activity implements OnClickListener {
         System.out.println("Josh: blank scan name");
       }
       else {
+        isRecoridng = true;
+        startRecordTime = System.currentTimeMillis();
         beginScan(name);
       }
 
       break;
     case R.id.stopButton:
-      System.out.println("Josh: Stop recording.");TangoJNINative.stopScan();
+      System.out.println("Josh: Stop recording.");
+      isRecoridng = false;
+      elapsedTimeTextView.setText(String.format(" %02d:%02d", 0,0));
+      TangoJNINative.stopScan();
       startButton.setEnabled(true);
       break;
     default:
@@ -311,55 +334,6 @@ public class PointcloudActivity extends Activity implements OnClickListener {
 
     Boolean isSDPresent = android.os.Environment.getExternalStorageState().equals(android.os.Environment.MEDIA_MOUNTED);
    ;
-//    if(Environment.isExternalStorageRemovable(pathString)){
-//      Toast.makeText(this, "There is an SD Card inserted!", Toast.LENGTH_SHORT).show();
-//      System.out.println("Josh: There was SD Card");
-//      return;
-//    }
-//  else{
-//      Toast.makeText(this, "There is no SD Card inserted!", Toast.LENGTH_SHORT).show();
-//
-//      System.out.println("Josh: There was no SD Card");
-//
-//    }
-//
-//
-//    try {
-//      // Open the file
-//      FileInputStream fs = new FileInputStream("/proc/mounts");
-//
-//      DataInputStream in = new DataInputStream(fs);
-//      BufferedReader br = new BufferedReader(new InputStreamReader(in));
-//
-//      String strLine;
-//      StringBuilder sb = new StringBuilder();
-//
-//      //Read File Line By Line
-//      while ((strLine = br.readLine()) != null)   {
-//        // Remember each line
-//        sb.append(strLine);
-//      }
-//
-//      //Close the stream
-//      in.close();
-//
-//      if(sb.toString().contains("external_sd")){
-//
-//        Toast.makeText(this, "There is an SD Card inserted!", Toast.LENGTH_SHORT).show();
-//      System.out.println("Josh: There was SD Card");
-//      return;
-//    }
-//  else{
-//      Toast.makeText(this, "There is no SD Card inserted!", Toast.LENGTH_SHORT).show();
-//
-//      System.out.println("Josh: There was no SD Card");
-//
-//    }
-//    } catch (Exception e) {
-//      //Catch exception if any
-//      e.printStackTrace();
-//    }
-
 
     File file;
     file = new File(getExternalFilesDirs(Environment.DIRECTORY_PICTURES)[0], scanName+"/RGB");
@@ -453,10 +427,16 @@ public class PointcloudActivity extends Activity implements OnClickListener {
                 @Override
                 public void run() {
                   try {
+                    if(isRecoridng){
+                      long seconds = (System.currentTimeMillis() - startRecordTime)/1000;
+                      elapsedTimeTextView.setText(String.format(" %02d:%02d", seconds / 60, seconds % 60));
+
+                    }
                     mTangoEventTextView.setText(TangoJNINative.getEventString());
                     mPoseDataTextView.setText(TangoJNINative.getPoseString());
                     mPointCountTextView.setText(String.valueOf(TangoJNINative.getVerticesCount()));
                     mAverageZTextView.setText(String.format("%.3f", TangoJNINative.getAverageZ()));
+                    queueTextView.setText(String.valueOf(TangoJNINative.getFisheyeQueueLength()));
                     mFrameDeltaTimeTextView.setText(
                         String.format("%.3f", TangoJNINative.getFrameDeltaTime()));
                   } catch (Exception e) {

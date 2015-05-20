@@ -31,4 +31,7 @@
     <string name = "averageZ">"Average depth (m): "</string>
     <string name="pointCount">"Point count: "</string>
     <string name="frameDelta">"Frame delta time (ms): "</string>
+    <string name="elapsedTime">"Elapsed Recording Time: "</string>
+    <string name="queueSize">"FISHEYE Queue Size: "</string>
+
 </resources>

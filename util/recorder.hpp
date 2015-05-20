@@ -17,17 +17,19 @@ template <class T> class recorder{
 public:
 	recorder();
 	~recorder();
-	int start_record(std::string record_name, void * param);
+	int start_record(std::string record_name, void * param, int num_threads);
 	int stop_record();
 	int set_record_path(std::string record_path);
 	int set_recorder_name(std::string recorder_name);
+	int get_queue_length();
 	int enqueue_record(T* data);
 	T * dequeue_record(bool wait);
 
 private:
+	int num_threads;
 	bool state_active = false;
 
-	pthread_t thread_handle;
+	pthread_t *thread_handles;
 	std::queue<T*> data_queue;
 	pthread_mutex_t data_mutex;
 	pthread_cond_t data_cv;
@@ -42,6 +44,11 @@ private:
 
 template <class T> recorder<T>::recorder(){
 	state_active = false;
+	pthread_mutex_init(&data_mutex, NULL);
+}
+
+template <class T> int recorder<T>::get_queue_length(){
+	return data_queue.size();
 }
 
 template <class T> recorder<T>::~recorder(){
@@ -70,18 +77,18 @@ template <class T> int recorder<T>::enqueue_record(T* data){
 template <class T> T* recorder<T>::dequeue_record(bool wait){
 	T * data = nullptr;
 	pthread_mutex_lock(&data_mutex);
-	if(data_queue.empty() && wait){
+	if(wait && data_queue.empty()){
 		pthread_cond_wait(&data_cv, &data_mutex);
-	} 
+	}
+	// If the data queue is empty here, that (probably) means someone is trying to signal us to exit.
 	if(data_queue.empty()){
 		LOGI("No elements in Queue to remove");
+		return nullptr;
 	}
-
 	LOGI("Elements remaining in %s queue: %d", recorder_name.c_str(), data_queue.size());
-	
 	data = data_queue.front();
 	if(data == nullptr) {
-		LOGI("Removed element is null (Queue size is %d)",data_queue.size());
+		LOGE("Removed element is null (Queue size is %d)",data_queue.size());
 	}
 	data_queue.pop();
 	pthread_mutex_unlock(&data_mutex);
@@ -92,8 +99,12 @@ template <class T> int recorder<T>::stop_record(){
 	if(state_active){
 		state_active = false;
 		void * args;
-		pthread_join(thread_handle,&args);
-		LOGI("Thread joined");
+		for(int i = 0 ; i < num_threads; i++){
+			pthread_join(thread_handles[i],&args);
+			LOGI("Thread %d joined",i);
+		}
+		num_threads = 0;
+		delete thread_handles;
 	}else{
 		LOGE("No scans were active!");
 	}
@@ -109,27 +120,26 @@ template <class T> int recorder<T>::set_recorder_name(std::string recorder_name)
 	this->recorder_name = recorder_name;
 }
 
-template <class T> int recorder<T>::start_record(std::string record_name, void * param){
+template <class T> int recorder<T>::start_record(std::string record_name, void * param, int num_threads){
+	this->num_threads = num_threads;
+	state_active = true;
 	LOGI("Starting scan %s", record_name.c_str());
 	this->record_name = record_name;
 	T::write_to_initialization(record_path, recorder_name, record_name, param);
-
-	pthread_create(&thread_handle, nullptr, dummy, (void*)this);
+	thread_handles = new pthread_t[num_threads];
+	for(int i = 0; i < num_threads; i++){
+		pthread_create(&thread_handles[i], nullptr, dummy, (void*)this);
+	}
 }
 
 
 template <class T> void * recorder<T>::record_thread(void * ){
 	T * data;
-	state_active = true;
 	LOGI("%s Recording thread Started", recorder_name.c_str());
 	while(true){
 		if(data = dequeue_record(state_active)){
-			// Read the front of the Queue
-			//data = dequeue_record(state_active);
-			if(data != nullptr){
-			  data->write_to_file(record_path, recorder_name, record_name);
-			  delete data;
-			}
+			data->write_to_file(record_path, recorder_name, record_name);
+			delete data;
 		} else if(!state_active){
 			break;
 		}

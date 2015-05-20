@@ -13,8 +13,6 @@ typedef enum e_format{
 	GRAY
 }format_t;
 
-static bool initialized;
-static tjhandle jpegCompressor;
 class ClsTangoImageBuffer:public TangoImageBuffer{
 	std::string to_str(double timestamp){
 		std::ostringstream stm ;
@@ -42,11 +40,6 @@ public:
 		this->format = data->format;
 		this->data = new uint8_t[bufsize];
 		memcpy(this->data, data->data, bufsize);
-		if(!initialized){
-			initialized = true;
-			jpegCompressor = tjInitCompress();
-		}
-
 	}
 		
 	~ClsTangoImageBuffer(){
@@ -83,18 +76,6 @@ public:
 		fp.close();
 		// TODO: Error Code
 		return 0;
-		/*typedef struct TangoCameraIntrinsics {
-		  TangoCameraId camera_id;
-		  TangoCalibrationType calibration_type;
-		  uint32_t width;
-		  uint32_t height;
-		  double fx;
-		  double fy;
-		  double cx;
-		  double cy;
-		  double distortion[5];
-		  } TangoIntrinsics;*/
-		  
 	}
 	int write_to_file(std::string path, std::string id, std::string name){
 		int bufsize;
@@ -120,31 +101,21 @@ public:
 		cv::Mat imageSRC(cv_height, cv_width, cv_fmt, data);
 		cv::Mat imageBGR(height, width, CV_8UC3, 0);
 		cv::cvtColor(imageSRC, imageBGR, cv_conv);
-		//std::vector<uchar> bufOut;
+		std::vector<uchar> bufOut;
+        std::vector<int> compression_params;
+        compression_params.push_back(CV_IMWRITE_JPEG_QUALITY);
+        compression_params.push_back(50);
 
 		std::string filename = path + std::string("/");
 		filename += id + std::string("_")+name + std::string("_") +
 			to_str(timestamp) + std::string(".jpg");
 		//LOGI("Writing to file %s", filename.c_str());
-        unsigned char *compressed_image = NULL;
-        long unsigned int jpeg_size = 0;
 
-        //int err = tjCompressFromYUV(jpegCompressor, data, stride, 1, (height*3)/2, TJSAMP_420, &compressed_image,
-        //		&jpeg_size, 90, TJFLAG_FASTDCT);
-        //int err = tjCompress2(jpegCompressor, imageBGR.data, stride, 0, height, TJPF_BGR, &compressed_image,
-        //		&jpeg_size,TJSAMP_444 , 90, 0);
-        //LOGI("JPEG Size %d. Error: %d %s", jpeg_size,err, tjGetErrorStr());
-        //#ifdef JCS_EXTENSIONS
-        //LOGI("JCS Extensions enabled");
-        //#endif
-        std::ofstream myfile (filename.c_str(),std::ofstream::binary);
-        myfile.write((const char *)compressed_image, jpeg_size);
-        myfile.close();
-		//cv::imwrite(filename.c_str(), imageBGR);
-		//cv::imencode(".jpg",imageBGR,bufOut,compression_params);
-		//imageSRC.release();
-		//imageBGR.release();
-		tjFree(compressed_image);
+		cv::imwrite(filename.c_str(), imageBGR, compression_params);
+		//cv::imencode(".jpg",imageBGR,bufOut);
+
+		imageSRC.release();
+		imageBGR.release();
 		//TODO: Error Code
 		return 0;
 	}

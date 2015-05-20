@@ -221,10 +221,10 @@ bool TangoData::ConnectCallbacks() {
   pairs[1].target = TANGO_COORDINATE_FRAME_DEVICE;
 
     // Attach the frameAvailable callback.
-  if ((TangoService_connectOnFrameAvailable(TANGO_CAMERA_COLOR, nullptr, onRGBFrameAvailable)) != TANGO_SUCCESS) {
-    LOGI("TangoService_connectOnFrameAvailable(RGB): Failed");
-    return false;
-  }
+  //if ((TangoService_connectOnFrameAvailable(TANGO_CAMERA_COLOR, nullptr, onRGBFrameAvailable)) != TANGO_SUCCESS) {
+  //  LOGI("TangoService_connectOnFrameAvailable(RGB): Failed");
+  //  return false;
+  //}
   if ((TangoService_connectOnFrameAvailable(TANGO_CAMERA_FISHEYE, nullptr, onFISHEYEFrameAvailable)) != TANGO_SUCCESS) {
     LOGI("TangoService_connectOnFrameAvailable(FISHEYE): Failed");
     return false;
@@ -392,11 +392,11 @@ bool TangoData::start_scan(std::string name) {
 	//rgb_recorder.start_record(name, (void*)&intr);
 	TangoService_getCameraIntrinsics(TANGO_CAMERA_FISHEYE, &intr);
 	scan_active = true;
-	fisheye_recorder.start_record(name,(void*)&intr);
+	fisheye_recorder.start_record(name,(void*)&intr, 6);
 
-	pose_recorder.start_record(name, nullptr);
+	pose_recorder.start_record(name, nullptr, 1);
 
-	xyzij_recorder.start_record(name, nullptr);
+	xyzij_recorder.start_record(name, nullptr,1);
 
 	return true;
 }
@@ -413,6 +413,16 @@ bool TangoData::setISO(int iso) {
 	}
 	return true;
 }
+
+
+int TangoData::get_FISHEYE_queue_length(){
+  if(scan_active)
+   return fisheye_recorder.get_queue_length();
+  else
+    return 0;
+}
+
+
 
 bool TangoData::setExposure(int exposure) {
 

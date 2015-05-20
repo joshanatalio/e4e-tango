@@ -40,8 +40,7 @@ public:
 		std::ofstream fp;
 		std::string filename = path + std::string("/");
 		filename += id + std::string("_")+name+ std::string(".csv");
-		//LOGI("Writing to file %s", filename.c_str());
-		fp.open(filename.c_str(), std::ofstream::app); // TODO: +W?
+		fp.open(filename.c_str(), std::ofstream::app);
 		fp << timestamp << ",";
 		fp << orientation[0] << "," << orientation[1] << ",";
 		fp << orientation[2] << "," << orientation[3] << ",";
