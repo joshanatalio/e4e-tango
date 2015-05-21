@@ -36,7 +36,7 @@ public:
 
 	}
 
-	int write_to_file(std::string path, std::string id, std::string name){
+	int write_to_file(std::string path, std::string id, std::string name, int threadid){
 		std::ofstream fp;
 		std::string filename = path + std::string("/");
 		filename += id + std::string("_")+name+ std::string(".csv");

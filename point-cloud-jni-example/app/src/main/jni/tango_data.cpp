@@ -392,7 +392,7 @@ bool TangoData::start_scan(std::string name) {
 	//rgb_recorder.start_record(name, (void*)&intr);
 	TangoService_getCameraIntrinsics(TANGO_CAMERA_FISHEYE, &intr);
 	scan_active = true;
-	fisheye_recorder.start_record(name,(void*)&intr, 6);
+	fisheye_recorder.start_record(name,(void*)&intr, 4);
 
 	pose_recorder.start_record(name, nullptr, 1);
 

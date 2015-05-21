@@ -26,8 +26,8 @@ public:
 	int get_queue_length();
 private:
 	int num_threads;
+	int threads_active;
 	bool state_active = false;
-	bool _state_active = false;
 
 	pthread_t *thread_handles;
 	std::queue<T*> data_queue;
@@ -38,6 +38,7 @@ private:
 	sem_t queue_semaphore;
 
 	static void* dummy(void*);
+
 	void *record_thread(void*);
 	void *param;
 	std::string recorder_name;
@@ -47,9 +48,8 @@ private:
 
 template <class T> recorder<T>::recorder(){
 	state_active = false;
-	_state_active = false;
 	thread_handles = nullptr;
-	sem_init(&queue_semaphore, 0, 0);
+	threads_active = 0;
 	pthread_rwlock_init(&queue_lock, NULL);
 }
 
@@ -70,15 +70,12 @@ template <class T> int recorder<T>::get_queue_length(){
 }
 template <class T> int recorder<T>::enqueue_record(T* data){
 	int i;
-
 	//LOGI("Enqueueing Record at time %f", data->timestamp);
 	if(!state_active){
 		LOGE("Scan was not active during enqueue. Enqueue failed!");
 		return -1;
 	}
-
 	pthread_rwlock_wrlock(&queue_lock);
-
 	data_queue.push(data);
 	sem_post(&queue_semaphore);
 	pthread_rwlock_unlock(&queue_lock);
@@ -94,7 +91,7 @@ template <class T> T* recorder<T>::dequeue_record(){
 		pthread_rwlock_unlock(&queue_lock);
 		return nullptr;
 	}
-	LOGI("Elements remaining in %s queue: %d", recorder_name.c_str(), data_queue.size());
+	//LOGI("Elements remaining in %s queue: %d", recorder_name.c_str(), data_queue.size());
 	data = data_queue.front();
 	if(data == nullptr) {
 		LOGE("Removed element is null (Queue size is %d)",data_queue.size());
@@ -120,6 +117,7 @@ template <class T> int recorder<T>::stop_record(){
 		LOGI("Thread %d joined",i);
 	}
 	num_threads = 0;
+	threads_active = 0;
 	if(thread_handles){
 		delete thread_handles;
 		thread_handles = nullptr;
@@ -138,7 +136,7 @@ template <class T> int recorder<T>::set_recorder_name(std::string recorder_name)
 
 template <class T> int recorder<T>::start_record(std::string record_name, void * param, int num_threads){
 	this->num_threads = num_threads;
-	_state_active = true;
+	sem_init(&queue_semaphore, 0, 0);
 	state_active = true;
 	LOGI("Starting scan %s", record_name.c_str());
 	this->record_name = record_name;
@@ -152,10 +150,11 @@ template <class T> int recorder<T>::start_record(std::string record_name, void *
 
 template <class T> void * recorder<T>::record_thread(void * ){
 	T * data;
-	LOGI("%s Recording thread Started", recorder_name.c_str());
+	int tid = threads_active++; // TODO: Dangerous. This is a hack.
+	LOGI("%s Recording thread %d Started", recorder_name.c_str(), tid);
 	while(true){
-		if(data = dequeue_record()){
-			data->write_to_file(record_path, recorder_name, record_name);
+		if((data = dequeue_record()) != nullptr){
+			data->write_to_file(record_path, recorder_name, record_name, tid);
 			delete data;
 		} else if(!state_active){
 			break;

@@ -135,7 +135,9 @@
  /home/theodor/Android/NVPACK/OpenCV-2.4.8.2-Tegra-sdk//sdk/native/jni/include/opencv2/core/core_c.h \
  /home/theodor/Android/NVPACK/OpenCV-2.4.8.2-Tegra-sdk//sdk/native/jni/include/opencv2/highgui/highgui.hpp \
  /home/theodor/Android/NVPACK/OpenCV-2.4.8.2-Tegra-sdk//sdk/native/jni/include/opencv2/highgui/highgui_c.h \
- /home/theodor//Research/repositories/sourceforge/libjpeg-turbo-1.4.0//build/arm_neon/installdir/include/turbojpeg.h \
+ /home/theodor//Research/repositories/sourceforge/libjpeg-turbo-1.4.0//build/arm_neon/installdir/include/jpeglib.h \
+ /home/theodor//Research/repositories/sourceforge/libjpeg-turbo-1.4.0//build/arm_neon/installdir/include/jconfig.h \
+ /home/theodor//Research/repositories/sourceforge/libjpeg-turbo-1.4.0//build/arm_neon/installdir/include/jmorecfg.h \
  /home/theodor/Research/repositories/git/e4e-tango/util//ClsTangoPoseData.hpp \
  /home/theodor/Research/repositories/git/e4e-tango/util//ClsTangoXYZij.hpp \
  /home/theodor/Research/repositories/git/pcl-superbuild/CMakeExternals/Install/pcl-android//include/pcl-1.6/pcl/io/ply_io.h \
@@ -1081,7 +1083,11 @@
 
 /home/theodor/Android/NVPACK/OpenCV-2.4.8.2-Tegra-sdk//sdk/native/jni/include/opencv2/highgui/highgui_c.h:
 
-/home/theodor//Research/repositories/sourceforge/libjpeg-turbo-1.4.0//build/arm_neon/installdir/include/turbojpeg.h:
+/home/theodor//Research/repositories/sourceforge/libjpeg-turbo-1.4.0//build/arm_neon/installdir/include/jpeglib.h:
+
+/home/theodor//Research/repositories/sourceforge/libjpeg-turbo-1.4.0//build/arm_neon/installdir/include/jconfig.h:
+
+/home/theodor//Research/repositories/sourceforge/libjpeg-turbo-1.4.0//build/arm_neon/installdir/include/jmorecfg.h:
 
 /home/theodor/Research/repositories/git/e4e-tango/util//ClsTangoPoseData.hpp:
 

@@ -5,7 +5,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
-#include <turbojpeg.h>
+#include <jpeglib.h>
 
 typedef enum e_format{
 	RGBA=0,
@@ -13,12 +13,18 @@ typedef enum e_format{
 	GRAY
 }format_t;
 
+#define MAX_THREADS 16
+static bool initialized[MAX_THREADS];
+static struct jpeg_compress_struct * _cinfo = new struct jpeg_compress_struct[MAX_THREADS];
+static struct jpeg_error_mgr *jerr = new struct jpeg_error_mgr[MAX_THREADS];
+
 class ClsTangoImageBuffer:public TangoImageBuffer{
 	std::string to_str(double timestamp){
 		std::ostringstream stm ;
 		stm << timestamp ;
 		return stm.str();
 	}
+
 public:
 	format_t fmt;
 	ClsTangoImageBuffer(const TangoImageBuffer* data, format_t format){
@@ -40,12 +46,14 @@ public:
 		}
 		this->data = new uint8_t[bufsize];
 		memcpy(this->data, data->data, bufsize);
+
 	}
 		
 	~ClsTangoImageBuffer(){
 		delete[] data;
+
 	}
-	static int write_to_initialization(std::string path, std::string id, std::string name, void * param){
+	static int write_to_initialization(std::string path, std::string id, std::string name, void *param){
 		struct TangoCameraIntrinsics *calib = (struct TangoCameraIntrinsics*)param;
 		std::ofstream fp;
 		std::string filename = path + std::string("/");
@@ -77,52 +85,62 @@ public:
 		// TODO: Error Code
 		return 0;
 	}
-	int write_to_file(std::string path, std::string id, std::string name){
+	int write_to_file(std::string path, std::string id, std::string name, int threadid){
 		int bufsize;
-		int cv_fmt, cv_height, cv_width, cv_conv;
-		
-		if(fmt == RGBA){
-			cv_height = height;
-			cv_width = stride;
-			cv_fmt = CV_8UC4;
-			cv_conv = CV_RGB2GRAY;
-		} else if(fmt == YUV_NV21){
-			cv_height = (height*3)/2;
-			cv_width = stride;
-			cv_fmt = CV_8UC1;
-			cv_conv = CV_YUV2BGR_NV21;
-		} else {// Default to gray
-			cv_height = height;
-			cv_width = stride;
-			cv_fmt = CV_8UC1;
-			cv_conv = CV_GRAY2BGR;
-		}
-		// TODO: Convert format from RGBA_8888 to BGRA_8888
-		cv::Mat imageSRC(cv_height, cv_width, cv_fmt, data);
+		FILE *outfile;
+        /* this is a pointer to one row of image data */
+        JSAMPROW row_pointer[1];
+        struct jpeg_compress_struct *cinfo = &_cinfo[threadid];
+		cv::Mat imageSRC((height*3)/2, stride, CV_8UC1, data);
 		cv::Mat imageBGR(height, stride, CV_8UC3, 0);
+		cv::cvtColor(imageSRC, imageBGR, CV_YUV2BGR_NV21);
 
-		cv::cvtColor(imageSRC, imageBGR, cv_conv);
-		std::vector<uchar> bufOut;
-        std::vector<int> compression_params;
-        compression_params.push_back(CV_IMWRITE_JPEG_QUALITY);
-        compression_params.push_back(10);
+        if(!initialized[threadid]){
+         	cinfo->err = jpeg_std_error(&jerr[threadid]);
+            jpeg_create_compress(cinfo);
+
+            /* Setting the parameters of the output file here */
+            cinfo->image_width = width;
+            cinfo->image_height = height;
+            cinfo->input_components = 3;
+            cinfo->in_color_space = JCS_RGB;
+
+            /* default compression parameters, we shouldn't be worried about these */
+            jpeg_set_defaults(cinfo);
+            cinfo->num_components = 3;
+            cinfo->dct_method = JDCT_FLOAT;
+            jpeg_set_quality(cinfo, 50, TRUE);
+            initialized[threadid] = true;
+            LOGI("JPEG Initialization finished (%d)", threadid);
+        }
 
 		std::string filename = path + std::string("/");
-		filename += id + std::string("_")+name + std::string("_") +
-			to_str(timestamp) + std::string(".jpg");
+		filename += id + std::string("_") + name;
+		filename += std::string("_") + to_str(timestamp) + std::string(".jpg");
 		//LOGI("Writing to file %s", filename.c_str());
-		cv::Rect myROI(0, 0, width-1, height-1);
-		cv::Mat imageBGRCrop(imageBGR, myROI);
-		cv::imwrite(filename.c_str(), imageBGRCrop, compression_params);
+
+        outfile = fopen( filename.c_str(), "wb" );
+        /* Now do the compression .. */
+        jpeg_stdio_dest(cinfo, outfile);
+        jpeg_start_compress(cinfo, TRUE );
+        /* like reading a file, this time write one row at a time */
+        while( cinfo->next_scanline < cinfo->image_height )
+        {
+        	row_pointer[0] = &imageBGR.data[ cinfo->next_scanline * stride * cinfo->input_components];
+        	jpeg_write_scanlines( cinfo, row_pointer, 1 );
+        }
+        /* similar to read file, clean up after we're done compressing */
+        jpeg_finish_compress( cinfo );
+
+        fclose( outfile );
+        /* success code is 1! */
 
 		imageSRC.release();
 		imageBGR.release();
-		//imageBGRCrop.release();
 		//TODO: Error Code
 		return 0;
 	}
-
-	
 };
+
 #endif
-;
+
