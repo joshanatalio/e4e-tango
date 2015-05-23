@@ -23,6 +23,8 @@
         android:layout_height="fill_parent"
         android:layout_gravity="top" />
 
+
+
     <LinearLayout
         android:id="@+id/linearLayout1"
         android:layout_width="wrap_content"
@@ -188,6 +190,8 @@
         </LinearLayout>
 
     </LinearLayout>
+
+
 
     <Button
         android:id="@+id/first_person_button"

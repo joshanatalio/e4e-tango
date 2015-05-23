@@ -75,9 +75,12 @@ public class PointcloudActivity extends Activity implements OnClickListener {
   private EditText recordNameBox;
   private TextView exposureTextView;
   private TextView isoTextView;
-  private  TextView queueTextView;
+  private TextView queueTextView;
   private long startRecordTime;
   private boolean isRecoridng;
+
+
+
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -98,7 +101,7 @@ public class PointcloudActivity extends Activity implements OnClickListener {
     // Text views for the available points count.
     mPointCountTextView = (TextView) findViewById(R.id.pointCount);
 
-    // Text view for average depth distance (in meters). 
+    // Text view for average depth distance (in meters).
     mAverageZTextView = (TextView) findViewById(R.id.averageZ);
 
     // Text view for fram delta time between two depth frame.
@@ -147,16 +150,15 @@ public class PointcloudActivity extends Activity implements OnClickListener {
     exposureSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
       @Override
       public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
-          int newVal = (i) * 2000000;
-          if (newVal == 0)
-          {
-            newVal = 11100000;
-            TangoJNINative.setExposure(newVal);
-            exposureTextView.setText("Auto Exposure: " + (newVal/1000000) + "ms");
-            return;
-          }
+        int newVal = (i) * 2000000;
+        if (newVal == 0) {
+          newVal = 11100000;
           TangoJNINative.setExposure(newVal);
-          exposureTextView.setText("Exposure: " + (newVal/1000000) + "ms");
+          exposureTextView.setText("Auto Exposure: " + (newVal / 1000000) + "ms");
+          return;
+        }
+        TangoJNINative.setExposure(newVal);
+        exposureTextView.setText("Exposure: " + (newVal / 1000000) + "ms");
       }
 
       @Override
@@ -175,7 +177,7 @@ public class PointcloudActivity extends Activity implements OnClickListener {
       @Override
       public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
         int newISO = 100;
-        switch (i){
+        switch (i) {
           case 3:
             newISO = 800;
             break;
@@ -208,6 +210,9 @@ public class PointcloudActivity extends Activity implements OnClickListener {
     // OpenGL view where all of the graphics are drawn.
     mGLView = (GLSurfaceView) findViewById(R.id.gl_surface_view);
     mGLView.setRenderer(new Renderer());
+
+
+    //view_.setOnClickListener(this);
 
     startUIThread();
   }
@@ -285,7 +290,7 @@ public class PointcloudActivity extends Activity implements OnClickListener {
     if (requestCode == 0) {
         // Make sure the request was successful.
         if (resultCode == RESULT_CANCELED) {
-          Toast.makeText(this, 
+          Toast.makeText(this,
             "Motion Tracking Permission Needed!", Toast.LENGTH_SHORT).show();
           finish();
         } else {
@@ -316,7 +321,7 @@ public class PointcloudActivity extends Activity implements OnClickListener {
           // Connect Tango Service
           err =  TangoJNINative.connect();
           if (err != 0) {
-            Toast.makeText(this, 
+            Toast.makeText(this,
                 "Tango Service connect error", Toast.LENGTH_SHORT).show();
           }
           TangoJNINative.setupExtrinsics();
@@ -356,6 +361,8 @@ public class PointcloudActivity extends Activity implements OnClickListener {
     startButton.setEnabled(false);
 
   }
+
+
 
   @Override
   public boolean onTouchEvent(MotionEvent event) {
@@ -415,6 +422,10 @@ public class PointcloudActivity extends Activity implements OnClickListener {
     }
     return true;
   }
+
+
+
+
 
   private void startUIThread() {
     new Thread(new Runnable() {
