@@ -141,12 +141,13 @@ public class PointcloudActivity extends Activity implements OnClickListener {
     startButton.setOnClickListener(this);
     stopButton = (Button) findViewById(R.id.stopButton);
     stopButton.setOnClickListener(this);
-
+    // textBox used to allow the user to type in their scan name
     recordNameBox = (EditText)findViewById(R.id.recordNameBox);
 
-    isRecoridng = false;
+    isRecoridng = false; // Used to see if the app is currently recording.
     exposureSeekBar.setMax(15);
-
+    /* Overridden methods for the exposure and ISO seekBars are below. This wil allow the
+      app to respond to changes from the seekBars. */
     exposureSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
       @Override
       public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
@@ -211,9 +212,6 @@ public class PointcloudActivity extends Activity implements OnClickListener {
     mGLView = (GLSurfaceView) findViewById(R.id.gl_surface_view);
     mGLView.setRenderer(new Renderer());
 
-
-    //view_.setOnClickListener(this);
-
     startUIThread();
   }
 
@@ -245,6 +243,9 @@ public class PointcloudActivity extends Activity implements OnClickListener {
     super.onDestroy();
   }
 
+
+  /* Responds to clicks from buttons that have "this" as the listener
+      using a switch statement makes the most sense here */
   @Override
   public void onClick(View v) {
     switch (v.getId()) {
@@ -259,6 +260,7 @@ public class PointcloudActivity extends Activity implements OnClickListener {
       break;
     case R.id.startButton:
       System.out.println("Josh: Start recording.");
+      // Check to make sure scan name is not empty.
       String name = recordNameBox.getText().toString();
       name  = name.trim();
       if(name.isEmpty()) {
@@ -267,8 +269,8 @@ public class PointcloudActivity extends Activity implements OnClickListener {
       }
       else {
         isRecoridng = true;
-        startRecordTime = System.currentTimeMillis();
-        beginScan(name);
+        startRecordTime = System.currentTimeMillis(); // start the timer for recording
+        beginScan(name); // start the scan
       }
 
       break;
@@ -276,7 +278,7 @@ public class PointcloudActivity extends Activity implements OnClickListener {
       System.out.println("Josh: Stop recording.");
       isRecoridng = false;
       elapsedTimeTextView.setText(String.format(" %02d:%02d", 0,0));
-      TangoJNINative.stopScan();
+      TangoJNINative.stopScan(); // stop the scan
       startButton.setEnabled(true);
       break;
     default:
@@ -331,9 +333,9 @@ public class PointcloudActivity extends Activity implements OnClickListener {
   }
 
   private void beginScan(String scanName) {
-    // TODO: Double check that the SD is plugged in, raise an error if not.
     // TODO: Check that scan directory does not exist, if it does, delete the old one and start again.
 
+    // Write to local storage, not SD
     File path  = Environment.getExternalStorageDirectory();
     String pathString = path.getPath();
 
@@ -423,10 +425,10 @@ public class PointcloudActivity extends Activity implements OnClickListener {
     return true;
   }
 
-
-
-
-
+  /* This method is used to manipulate and supply data to the text fields
+     in the top left corner of the application. It shows information like
+     current recording time, frame rate, and the size of the queues that hold
+     uncompressed images */
   private void startUIThread() {
     new Thread(new Runnable() {
       @Override
